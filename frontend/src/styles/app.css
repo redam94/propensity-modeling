@@ -15,7 +15,7 @@
   --text: #111827;
   --text-2: #374151;
   --muted: #6b7280;
-  --faint: #9ca3af;
+  --faint: #636a77; /* >=4.5:1 on --surface-3 (#f1f3f6) */
 
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
@@ -67,7 +67,7 @@
     --text: #e5e7eb;
     --text-2: #cbd5e1;
     --muted: #9ca3af;
-    --faint: #6b7280;
+    --faint: #9ca3af; /* >=4.5:1 on --surface-3 (#222a37) */
 
     --primary: #4f8cff;
     --primary-hover: #6ea0ff;
@@ -1083,6 +1083,12 @@ select.role-select.r-subgroup {
   color: #7c3aed;
   font-weight: 600;
 }
+@media (prefers-color-scheme: dark) {
+  select.role-select.r-subgroup {
+    border-color: #c4b5fd;
+    color: #c4b5fd;
+  }
+}
 select.role-select.r-ignore {
   color: var(--muted);
 }
@@ -1266,4 +1272,22 @@ select.role-select.r-ignore {
   background: var(--surface-3);
   border-radius: 4px;
   padding: 1px 6px;
+}
+
+/* Unstyled button used inside table headers/cells for keyboard-accessible sort & drill-down */
+.th-btn {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.th-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }

@@ -223,3 +223,79 @@ def test_restart_persistence(app_factory, tmp_path):
         assert jc["status"] == "failed" and "stopped while this analysis was running" in jc["error"]
         assert len(c.get("/api/analyses").json()) == 3
         assert c.get(f"/api/analyses/{done}/export").status_code == 200
+
+
+# --------------------------------------------------------------------------- review regressions
+@pytest.mark.parametrize(
+    "overrides, fragment",
+    [
+        ({"alpha": 0}, "alpha"),
+        ({"alpha": -0.1}, "alpha"),
+        ({"alpha": 1.5}, "alpha"),
+        ({"caliper": 0}, "Caliper"),
+        ({"caliper": -1}, "Caliper"),
+        ({"weight_clip": 0}, "Weight clip"),
+        ({"weight_clip": 2}, "Weight clip"),
+    ],
+)
+def test_out_of_range_parameters_rejected(app_factory, overrides, fragment):
+    with app_factory() as c:
+        did = upload(c)["dataset_id"]
+        r = c.post("/api/analyses", json=base_config(did, **overrides))
+        assert r.status_code == 422, r.text
+        assert fragment in r.json()["detail"]
+        assert c.get("/api/analyses").json() == []
+        # None still means "disabled"
+        ok = c.post("/api/analyses", json=base_config(did, caliper=None, weight_clip=None, alpha=0.5))
+        assert ok.status_code == 202, ok.text
+
+
+def test_worker_crash_only_fails_running_job(app_factory):
+    """A dead worker breaks every pending future; queued jobs must be resubmitted, not failed."""
+    with app_factory(max_workers=1) as c:
+        did = upload(c)["dataset_id"]
+        crash = _submit(c, base_config(did, name="crash-after:1.0"))
+        queued = [_submit(c, base_config(did, name=f"quick-{i}")) for i in range(2)]
+        jc = wait_for(c, crash)
+        assert jc["status"] == "failed" and "crashed" in jc["error"], jc
+        for aid in queued:
+            body = wait_for(c, aid)
+            assert body["status"] == "completed", body
+            assert body["error"] is None
+
+
+def test_export_neutralises_formulas_and_control_characters():
+    import pandas as pd
+
+    import fakes
+    from app.export import build_workbook
+    from propensity_lift.schemas import AnalysisConfig
+
+    cfg = AnalysisConfig.model_validate(
+        base_config("d" * 32, name="=1+1", model_features=["reg\x01ion"], subgroup_columns=["region"])
+    )
+    result = fakes.fake_result(pd.DataFrame({"x": [1, 2]}), cfg, "a" * 32)
+    m = result.methods[0]
+    m.subgroups[0].subgroup_level = '=HYPERLINK("http://evil.example","click")'
+    m.balance[0].variable = "region=North\x01East"
+    m.warnings.append("@SUM(1,2)")
+    result.feature_overlap[0].levels[0].level = "-2+3"
+    result.feature_overlap[0].control_only_levels = ["+cmd", "North\x01East"]
+    result.warnings.append("Note\x02 with control char")
+
+    wb = load_workbook(io.BytesIO(build_workbook(result)))
+    texts = []
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                assert cell.data_type != "f", (ws.title, cell.coordinate, cell.value)
+                if isinstance(cell.value, str):
+                    assert "\x01" not in cell.value and "\x02" not in cell.value
+                    texts.append(cell.value)
+    assert "'=1+1" in texts
+    assert "'=HYPERLINK(\"http://evil.example\",\"click\")" in texts
+    assert "region=NorthEast" in texts
+    assert "'-2+3" in texts
+    assert "'+cmd, NorthEast" in texts
+    # numbers (including negatives) stay numeric
+    assert any(isinstance(v, float) for v in next(wb["Contrasts"].iter_rows(min_row=2, values_only=True)))

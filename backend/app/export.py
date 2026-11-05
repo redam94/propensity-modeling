@@ -7,6 +7,7 @@ import json
 from typing import Any, Dict, List
 
 import pandas as pd
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from propensity_lift.schemas import (
     AnalysisResult,
     BalanceRow,
@@ -32,6 +33,31 @@ def _hist_frame(h: Histogram) -> pd.DataFrame:
 
 def _frame(rows: List[Dict[str, Any]], columns: List[str]) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=columns) if rows else pd.DataFrame(columns=columns)
+
+
+# Strings starting with these are interpreted as formulas by Excel/openpyxl (formula /
+# CSV injection). The workbook never writes intentional formulas, so every such string --
+# category levels and column names from the upload, the analysis name, warnings -- is
+# written as literal text with a leading apostrophe.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe_str(v: Any) -> Any:
+    """Make one cell value safe to write: drop characters openpyxl rejects (control
+    characters -> IllegalCharacterError) and neutralise formula-like strings. Non-strings
+    (including negative numbers) are returned unchanged."""
+    if not isinstance(v, str):
+        return v
+    v = ILLEGAL_CHARACTERS_RE.sub("", v)
+    if v.startswith(_FORMULA_PREFIXES):
+        v = "'" + v
+    return v
+
+
+def _clean(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.map(_safe_str) if hasattr(df, "map") else df.applymap(_safe_str)
+    df.columns = [_safe_str(c) for c in df.columns]
+    return df
 
 
 def _cell(v: Any) -> Any:
@@ -160,36 +186,36 @@ def build_workbook(result: AnalysisResult) -> bytes:
 
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as xw:
-        summary_df.to_excel(xw, sheet_name="Summary", index=False)
-        contrasts_df.to_excel(xw, sheet_name="Contrasts", index=False)
-        balance_df.to_excel(xw, sheet_name="Balance", index=False)
+        _clean(summary_df).to_excel(xw, sheet_name="Summary", index=False)
+        _clean(contrasts_df).to_excel(xw, sheet_name="Contrasts", index=False)
+        _clean(balance_df).to_excel(xw, sheet_name="Balance", index=False)
 
         row = 0
         pd.DataFrame([["Propensity-score support regions"]]).to_excel(
             xw, sheet_name="Overlap", index=False, header=False, startrow=row
         )
-        regions_df.to_excel(xw, sheet_name="Overlap", index=False, startrow=row + 1)
+        _clean(regions_df).to_excel(xw, sheet_name="Overlap", index=False, startrow=row + 1)
         row += len(regions_df) + 3
         pd.DataFrame([["Propensity-score quantiles"]]).to_excel(
             xw, sheet_name="Overlap", index=False, header=False, startrow=row
         )
-        quant_df.to_excel(xw, sheet_name="Overlap", index=False, startrow=row + 1)
+        _clean(quant_df).to_excel(xw, sheet_name="Overlap", index=False, startrow=row + 1)
         row += len(quant_df) + 3
         pd.DataFrame([["Propensity-score histogram (shared bins)"]]).to_excel(
             xw, sheet_name="Overlap", index=False, header=False, startrow=row
         )
-        hist_df.to_excel(xw, sheet_name="Overlap", index=False, startrow=row + 1)
+        _clean(hist_df).to_excel(xw, sheet_name="Overlap", index=False, startrow=row + 1)
 
-        fo_df.to_excel(xw, sheet_name="FeatureOverlap", index=False)
+        _clean(fo_df).to_excel(xw, sheet_name="FeatureOverlap", index=False)
         if not levels_df.empty:
-            levels_df.to_excel(xw, sheet_name="FeatureOverlap", index=False, startrow=len(fo_df) + 3)
+            _clean(levels_df).to_excel(xw, sheet_name="FeatureOverlap", index=False, startrow=len(fo_df) + 3)
 
-        subgroups_df.to_excel(xw, sheet_name="Subgroups", index=False)
+        _clean(subgroups_df).to_excel(xw, sheet_name="Subgroups", index=False)
 
-        imp_df.to_excel(xw, sheet_name="Model", index=False)
-        calib_df.to_excel(xw, sheet_name="Model", index=False, startcol=3)
+        _clean(imp_df).to_excel(xw, sheet_name="Model", index=False)
+        _clean(calib_df).to_excel(xw, sheet_name="Model", index=False, startcol=3)
 
-        config_df.to_excel(xw, sheet_name="Config", index=False)
+        _clean(config_df).to_excel(xw, sheet_name="Config", index=False)
 
         for ws in xw.book.worksheets:
             for col in ws.columns:

@@ -6,6 +6,7 @@ Behaviour is driven by ``config.name``:
 * ``"fail:value"``        raise ValueError (message must be shown verbatim)
 * ``"fail:runtime"``      raise ZeroDivisionError (shown as "ZeroDivisionError: ...")
 * ``"fail:crash"``        hard-exit the worker process (BrokenProcessPool)
+* ``"crash-after:<s>"``   report progress, sleep ``s`` seconds, then hard-exit the worker
 * anything else           return immediately
 """
 
@@ -140,6 +141,11 @@ def fake_analysis(df, config, analysis_id=None, progress=None):
     elif name == "fail:runtime":
         return 1 / 0
     elif name == "fail:crash":
+        os._exit(13)
+    elif name.startswith("crash-after:"):
+        if progress:
+            progress(0.1, "about to crash")
+        time.sleep(float(name.split(":", 1)[1]))
         os._exit(13)
     return fake_result(df, config, analysis_id)
 

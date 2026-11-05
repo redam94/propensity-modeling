@@ -41,7 +41,7 @@ const LIGHT: Palette = {
   threshold: "#B91C1C",
   positive: "#047857",
   negative: "#B91C1C",
-  before: "#9CA3AF",
+  before: "#868E9C", // >=3:1 non-text contrast on white
   after: "#0072B2",
   tooltipBg: "#FFFFFF",
   tooltipBorder: "#E5E7EB",

@@ -1,20 +1,10 @@
-import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteAnalysis, isActive, listAnalyses, listDatasets } from "../api/client";
 import type { JobInfo } from "../api/types";
 import { Card, Empty, ErrorBox, Loading, ProgressBar, StatusBadge } from "../components/ui";
 import { elapsedSeconds, fmtDateTime, fmtDuration } from "../lib/format";
-
-/** Re-render every second while something is active so elapsed timers tick. */
-function useTicker(active: boolean) {
-  const [, set] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => set((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [active]);
-}
+import { useTicker } from "../hooks/useTicker";
 
 export default function RunsPage() {
   const qc = useQueryClient();

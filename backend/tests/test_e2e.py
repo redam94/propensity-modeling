@@ -91,3 +91,32 @@ def test_real_analysis_minimal_config_csv(app_factory):
         assert r.status_code == 202, r.text
         body = wait_for(c, r.json()["analysis_id"], timeout=120)
         assert body["status"] == "completed", body["error"]
+
+
+def test_export_with_control_character_and_formula_labels(app_factory):
+    """Category values with control characters / formula prefixes must not break or arm the export."""
+    from backend_helpers import base_config, make_frame
+
+    df = make_frame(400, seed=3)
+    df["region"] = df["region"].replace({"North": "North\x01East", "West": '=HYPERLINK("http://x","y")'})
+    with app_factory(job_fn=None, max_workers=1) as c:
+        prof = upload(c, df)
+        cfg = base_config(prof["dataset_id"], name="=1+1", subgroup_columns=["region"])
+        r = c.post("/api/analyses", json=cfg)
+        assert r.status_code == 202, r.text
+        body = wait_for(c, r.json()["analysis_id"], timeout=120)
+        assert body["status"] == "completed", body["error"]
+
+        x = c.get(f"/api/analyses/{body['analysis_id']}/export")
+        assert x.status_code == 200, x.text
+        wb = load_workbook(io.BytesIO(x.content))
+        texts = []
+        for ws in wb.worksheets:
+            for row in ws.iter_rows():
+                for cell in row:
+                    assert cell.data_type != "f", (ws.title, cell.coordinate, cell.value)
+                    if isinstance(cell.value, str):
+                        texts.append(cell.value)
+        joined = "\n".join(texts)
+        assert "NorthEast" in joined and "\x01" not in joined
+        assert "'=1+1" in texts

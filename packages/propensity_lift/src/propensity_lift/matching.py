@@ -33,6 +33,50 @@ def _keys(score: np.ndarray, strata: Optional[np.ndarray]) -> np.ndarray:
     return np.asarray(score, dtype=float) + np.asarray(strata, dtype=float) * _STRIDE
 
 
+@dataclass
+class _Setup:
+    f_idx: np.ndarray      # focal indices (into input arrays)
+    p_sorted: np.ndarray   # pool indices sorted by key
+    ps_sorted: np.ndarray  # sorted pool keys
+    fk: np.ndarray         # focal keys
+    maxd: float
+
+
+def _setup(score, focal, pool, caliper, strata) -> _Setup:
+    key = _keys(score, strata)
+    f_idx = np.flatnonzero(focal)
+    p_idx = np.flatnonzero(pool)
+    maxd = _MAX_DIST if caliper is None else min(float(caliper), _MAX_DIST)
+    order = np.argsort(key[p_idx], kind="stable")
+    return _Setup(f_idx, p_idx[order], key[p_idx][order], key[f_idx], maxd)
+
+
+def _replacement_ranges(ps_sorted: np.ndarray, fk: np.ndarray, ratio: int, maxd: float) -> Tuple[np.ndarray, np.ndarray]:
+    """For each focal key, the half-open range [lo, hi) of sorted pool positions it is matched to.
+
+    The range holds the ``ratio`` nearest pool units **plus every unit tied with the
+    ratio-th nearest distance** (restricted to the caliper ``maxd``). Including the
+    whole tie block matters for survey data with categorical-only PS models, where
+    the score takes few distinct values: picking "the first k in sorted order"
+    would send every tied focal unit to the same few controls.
+    """
+    m = len(ps_sorted)
+    k = min(ratio, m)
+    pos = np.searchsorted(ps_sorted, fk)
+    offs = np.arange(-k, k)
+    cand = pos[:, None] + offs[None, :]
+    valid = (cand >= 0) & (cand < m)
+    d = np.abs(ps_sorted[np.clip(cand, 0, m - 1)] - fk[:, None])
+    d[~valid] = np.inf
+    dk = np.partition(d, k - 1, axis=1)[:, k - 1]          # k-th smallest distance
+    r = np.minimum(dk, maxd)
+    tol = 1e-10 + 1e-12 * np.abs(fk)                       # absorb float noise in "tied" scores
+    lo = np.searchsorted(ps_sorted, fk - r - tol, side="left")
+    hi = np.searchsorted(ps_sorted, fk + r + tol, side="right")
+    hi = np.maximum(hi, lo)
+    return lo, hi
+
+
 def match_one_direction(
     score: np.ndarray,
     focal: np.ndarray,
@@ -44,41 +88,71 @@ def match_one_direction(
 ) -> MatchPairs:
     """Match each focal unit (boolean mask ``focal``) to up to ``ratio`` units of
     ``pool`` (boolean mask) by nearest ``score`` within ``caliper`` (absolute,
-    same scale as score) and within identical ``strata``."""
-    key = _keys(score, strata)
-    f_idx = np.flatnonzero(focal)
-    p_idx = np.flatnonzero(pool)
-    maxd = _MAX_DIST if caliper is None else min(float(caliper), _MAX_DIST)
-    empty = MatchPairs(np.zeros(0, int), np.zeros(0, int), np.zeros(0), len(f_idx), 0)
-    if len(f_idx) == 0 or len(p_idx) == 0:
+    same scale as score) and within identical ``strata``.
+
+    With replacement, pool units tied with the ``ratio``-th nearest distance are
+    all used and share the focal unit's weight (so a focal unit may get more than
+    ``ratio`` matches, each weighted 1/n_matches)."""
+    su = _setup(score, focal, pool, caliper, strata)
+    nf = len(su.f_idx)
+    empty = MatchPairs(np.zeros(0, int), np.zeros(0, int), np.zeros(0), nf, 0)
+    if nf == 0 or len(su.p_sorted) == 0:
         return empty
-    order = np.argsort(key[p_idx], kind="stable")
-    ps_sorted = key[p_idx][order]
-    p_sorted = p_idx[order]
-    m = len(ps_sorted)
-    fk = key[f_idx]
     if replacement:
-        k = min(ratio, m)
-        pos = np.searchsorted(ps_sorted, fk)
-        offs = np.arange(-k, k)
-        cand = pos[:, None] + offs[None, :]
-        valid = (cand >= 0) & (cand < m)
-        candc = np.clip(cand, 0, m - 1)
-        d = np.abs(ps_sorted[candc] - fk[:, None])
-        d[~valid] = np.inf
-        sel = np.argsort(d, axis=1, kind="stable")[:, :k]
-        dsel = np.take_along_axis(d, sel, axis=1)
-        csel = np.take_along_axis(candc, sel, axis=1)
-        ok = dsel <= maxd
-        rows = np.repeat(np.arange(len(f_idx)), k).reshape(len(f_idx), k)
-        rr, cc = rows[ok], csel[ok]
+        lo, hi = _replacement_ranges(su.ps_sorted, su.fk, ratio, su.maxd)
+        lengths = hi - lo
+        total = int(lengths.sum())
+        rr = np.repeat(np.arange(nf), lengths)
+        starts = np.cumsum(lengths) - lengths
+        cc = np.arange(total) - np.repeat(starts - lo, lengths)
     else:
-        rr, cc = _greedy_without_replacement(ps_sorted, fk, score[f_idx], maxd, ratio)
+        rr, cc = _greedy_without_replacement(su.ps_sorted, su.fk, np.asarray(score)[su.f_idx], su.maxd, ratio)
     if rr.size == 0:
         return empty
-    counts = np.bincount(rr, minlength=len(f_idx))
+    counts = np.bincount(rr, minlength=nf)
     w = 1.0 / counts[rr]
-    return MatchPairs(f_idx[rr], p_sorted[cc], w, len(f_idx), int((counts > 0).sum()))
+    return MatchPairs(su.f_idx[rr], su.p_sorted[cc], w, nf, int((counts > 0).sum()))
+
+
+@dataclass
+class _DirectionWeights:
+    focal_matched: np.ndarray   # indices of focal units with >= 1 match
+    pool_weight: np.ndarray     # length-n: sum over focal units served of 1/k
+    n_focal: int
+    n_pool_used: int
+
+
+def _direction_weights(score, focal, pool, caliper, ratio, replacement, strata, n) -> _DirectionWeights:
+    """Like :func:`match_one_direction` but returns aggregated weights only.
+
+    With replacement the tie blocks can be large (all-categorical PS models), so
+    weights are accumulated with a difference array over sorted pool positions
+    instead of materialising every (focal, control) pair."""
+    if not replacement:
+        mp = match_one_direction(score, focal, pool, caliper, ratio, False, strata)
+        pw = np.bincount(mp.control, weights=mp.weight, minlength=n) if mp.control.size else np.zeros(n)
+        used = int(np.unique(mp.control).size) if mp.control.size else 0
+        return _DirectionWeights(np.unique(mp.treated), pw, mp.n_focal, used)
+    su = _setup(score, focal, pool, caliper, strata)
+    nf, m = len(su.f_idx), len(su.p_sorted)
+    pw = np.zeros(n)
+    if nf == 0 or m == 0:
+        return _DirectionWeights(np.zeros(0, int), pw, nf, 0)
+    lo, hi = _replacement_ranges(su.ps_sorted, su.fk, ratio, su.maxd)
+    ok = hi > lo
+    lo, hi = lo[ok], hi[ok]
+    share = 1.0 / (hi - lo)
+    dw = np.zeros(m + 1)
+    np.add.at(dw, lo, share)
+    np.add.at(dw, hi, -share)
+    dc = np.zeros(m + 1)
+    np.add.at(dc, lo, 1.0)
+    np.add.at(dc, hi, -1.0)
+    w_sorted = np.cumsum(dw)[:m]
+    cover = np.cumsum(dc)[:m]
+    w_sorted[cover < 0.5] = 0.0     # remove float residue outside every range
+    pw[su.p_sorted] = w_sorted
+    return _DirectionWeights(su.f_idx[ok], pw, nf, int((cover > 0.5).sum()))
 
 
 def _find(parent: list, i: int) -> int:
@@ -162,17 +236,15 @@ def nn_match(
     """
     t = np.asarray(t).astype(bool)
     n = len(t)
-    a = match_one_direction(logit_ps, t, ~t, caliper_abs, ratio, replacement, strata)
+    a = _direction_weights(logit_ps, t, ~t, caliper_abs, ratio, replacement, strata, n)
     w = np.zeros(n)
-    if a.treated.size:
-        w[np.unique(a.treated)] = 1.0
-        w += np.bincount(a.control, weights=a.weight, minlength=n)
+    w[a.focal_matched] = 1.0
+    w += a.pool_weight
     n_ctrl_matched = 0
     if estimand == "ATE":
-        b = match_one_direction(logit_ps, ~t, t, caliper_abs, ratio, replacement, strata)
-        if b.treated.size:
-            w[np.unique(b.treated)] += 1.0
-            w += np.bincount(b.control, weights=b.weight, minlength=n)
-        n_ctrl_matched = b.n_focal_matched
-    used_controls = int(np.unique(a.control).size) if a.control.size else 0
-    return MatchResult(w, a.n_focal_matched, a.n_focal - a.n_focal_matched, used_controls, n_ctrl_matched)
+        b = _direction_weights(logit_ps, ~t, t, caliper_abs, ratio, replacement, strata, n)
+        w[b.focal_matched] += 1.0
+        w += b.pool_weight
+        n_ctrl_matched = int(b.focal_matched.size)
+    n_matched = int(a.focal_matched.size)
+    return MatchResult(w, n_matched, a.n_focal - n_matched, a.n_pool_used, n_ctrl_matched)

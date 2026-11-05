@@ -22,6 +22,7 @@ import {
   type TreatmentState,
 } from "../lib/configBuilder";
 import { METHOD_LABELS, fmtInt, fmtScalar } from "../lib/format";
+import { rememberDataset } from "../lib/lastDataset";
 
 const KINDS: ColumnKind[] = ["numeric", "binary", "categorical", "datetime", "text", "empty"];
 const PAGE_SIZES = [50, 100, 200];
@@ -201,12 +202,13 @@ function ColumnGrid({
           ))}
         </select>
         <div className="role-counts">
-          <button className={`role-pill${roleFilter === "all" ? " on" : ""}`} onClick={() => setRoleFilter("all")}>
+          <button aria-pressed={roleFilter === "all"} className={`role-pill${roleFilter === "all" ? " on" : ""}`} onClick={() => setRoleFilter("all")}>
             All {profile.n_cols}
           </button>
           {ROLE_OPTIONS.map((r) => (
             <button
               key={r.value}
+              aria-pressed={roleFilter === r.value}
               className={`role-pill${roleFilter === r.value ? " on" : ""}`}
               onClick={() => setRoleFilter(roleFilter === r.value ? "all" : r.value)}
             >
@@ -361,7 +363,7 @@ function TreatmentPanel({
             {col.top_values.map((t) => {
               const k = valueKey(t.value);
               return (
-                <button key={k} type="button" className={`chip exposed${exposed.has(k) ? " on" : ""}`} onClick={() => toggleExposed(k)}>
+                <button key={k} type="button" aria-pressed={exposed.has(k)} className={`chip exposed${exposed.has(k) ? " on" : ""}`} onClick={() => toggleExposed(k)}>
                   <span className="chip-label">{fmtScalar(t.value)}</span>
                   <span className="n">{fmtInt(t.count)}</span>
                 </button>
@@ -394,6 +396,7 @@ function TreatmentPanel({
                     key={k}
                     type="button"
                     disabled={exposed.has(k)}
+                    aria-pressed={control.has(k)}
                     className={`chip control${control.has(k) ? " on" : ""}`}
                     onClick={() => toggleControl(k)}
                   >
@@ -463,7 +466,7 @@ function OutcomesPanel({
                   {col.top_values.map((t) => {
                     const k = valueKey(t.value);
                     return (
-                      <button key={k} type="button" className={`chip pos${sel.has(k) ? " on" : ""}`} onClick={() => toggle(name, k)}>
+                      <button key={k} type="button" aria-pressed={sel.has(k)} className={`chip pos${sel.has(k) ? " on" : ""}`} onClick={() => toggle(name, k)}>
                         <span className="chip-label">{fmtScalar(t.value)}</span>
                         <span className="n">{fmtInt(t.count)}</span>
                       </button>
@@ -836,14 +839,8 @@ export default function ConfigurePage() {
   });
 
   useEffect(() => {
-    if (datasetId) {
-      try {
-        localStorage.setItem("lastDatasetId", datasetId);
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [datasetId]);
+    if (datasetId) rememberDataset(datasetId, sheet);
+  }, [datasetId, sheet]);
 
   if (!datasetId) return <DatasetPicker />;
   if (q.isLoading) return <Loading label="Loading dataset profile…" />;

@@ -2,6 +2,7 @@ import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query";
 import { getHealth, isActive, listAnalyses } from "./api/client";
 import { Icon } from "./components/ui";
+import { lastConfigurePath } from "./lib/lastDataset";
 import UploadPage from "./pages/UploadPage";
 import ConfigurePage from "./pages/ConfigurePage";
 import RunsPage from "./pages/RunsPage";
@@ -16,13 +17,7 @@ function Sidebar() {
     refetchInterval: (q) => (q.state.data?.some((j) => isActive(j.status)) ? 1500 : 10_000),
   });
   const active = runs.data?.filter((j) => isActive(j.status)).length ?? 0;
-  const lastDataset = (() => {
-    try {
-      return localStorage.getItem("lastDatasetId");
-    } catch {
-      return null;
-    }
-  })();
+  const configurePath = lastConfigurePath();
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -39,7 +34,7 @@ function Sidebar() {
         <span className="nav-label">Data</span>
       </NavLink>
       <NavLink
-        to={lastDataset ? `/configure/${lastDataset}` : "/configure"}
+        to={configurePath}
         className={({ isActive: a }) => `nav-link${a || location.pathname.startsWith("/configure") ? " active" : ""}`}
         title="Configure"
       >

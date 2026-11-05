@@ -66,12 +66,23 @@ export function fmtCI(lo: number | null | undefined, hi: number | null | undefin
   return `[${fmtSigned(lo, 2)}, ${fmtSigned(hi, 2)}]`;
 }
 
-/** p-value with "<0.001" floor. */
-export function fmtP(p: number | null | undefined): string {
+/**
+ * p-value with "<0.001" floor. Precision is widened as needed so the shown
+ * value never rounds across `alpha` (the significance cut-off) or `2*alpha`
+ * (the "directional" cut-off) — e.g. p=0.0496 shows "0.0496", not "0.050".
+ */
+export function fmtP(p: number | null | undefined, alpha = 0.05): string {
   if (!isNum(p)) return DASH;
   if (p < 0.001) return "<0.001";
-  if (p < 0.01) return p.toFixed(3);
-  return p.toFixed(2);
+  let digits = p < 0.1 ? 3 : 2;
+  let s = p.toFixed(digits);
+  for (const cut of [alpha, alpha * 2]) {
+    while (digits < 6 && p < cut !== Number(s) < cut) {
+      digits++;
+      s = p.toFixed(digits);
+    }
+  }
+  return s;
 }
 
 export type SigLevel = "sig-pos" | "sig-neg" | "marginal" | "ns";

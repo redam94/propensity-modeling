@@ -88,6 +88,7 @@ class AdjustInfo:
     n_clipped: int = 0
     match: Optional[MatchResult] = None
     n_empty_strata: int = 0
+    w_unclipped: Optional[np.ndarray] = None   # IPW only, when weight_clip changed any weight
 
 
 def _adjust(
@@ -105,8 +106,10 @@ def _adjust(
         info.match = mr
         return mr.weights, info
     if method == "ipw":
-        w = ipw_weights(ps, t, cfg.estimand)
-        w, info.n_clipped = clip_weights(w, t, cfg.weight_clip)
+        w_raw = ipw_weights(ps, t, cfg.estimand)
+        w, info.n_clipped = clip_weights(w_raw, t, cfg.weight_clip)
+        if info.n_clipped:
+            info.w_unclipped = w_raw
         return w, info
     if method == "overlap_weights":
         return overlap_weights(ps, t), info
@@ -147,7 +150,8 @@ def _subgroup_labels(s: pd.Series) -> np.ndarray:
 def _natural_key(level: Any) -> Tuple[Any, ...]:
     """Sort levels like a human: '18-24' < '25-34' < '55+', '(9.5, 20]' < '(20, 31]', '(missing)' last."""
     text = str(level)
-    parts = re.split(r"(\d+(?:\.\d+)?)", text)
+    # a '-' counts as a sign only when not preceded by a digit ('18-24' is a range, '(-0.3, 0.2]' negative)
+    parts = re.split(r"((?<![\d.])-?\d+(?:\.\d+)?)", text)
     key = tuple((0, float(p), "") if i % 2 else (1, 0.0, p.lower()) for i, p in enumerate(parts) if p != "")
     return (text in ("(missing)", "__other__"),) + key
 
@@ -210,6 +214,7 @@ class _Ctx:
     groups: List[Tuple[str, str]]
     Y: np.ndarray
     M: np.ndarray
+    X_model: np.ndarray            # PS model design matrix (bootstrap refits)
     outcomes: List[OutcomeData]
     raw_e: Any
     raw_c: Any
@@ -250,6 +255,14 @@ def run_analysis(
     t_all = code_treatment(df[cfg.treatment_column], cfg.exposed_values, cfg.control_values)
     keep = t_all >= 0
     n_drop_treat = int((~keep).sum())
+    if not cfg.control_values:
+        ctl_levels = sorted({str(v).strip() for v in df[cfg.treatment_column][t_all == 0].dropna().unique()})
+        if len(ctl_levels) > 1:
+            shown = ", ".join(repr(v) for v in ctl_levels[:10]) + (" ..." if len(ctl_levels) > 10 else "")
+            warnings.append(
+                f"control_values not set: {len(ctl_levels)} different treatment values were pooled into the "
+                f"control group ({shown}); set control_values to exclude codes such as 'Unknown' or 99"
+            )
     if n_drop_treat:
         warnings.append(
             f"{n_drop_treat} rows dropped: treatment value missing or in neither the exposed nor control values"
@@ -351,7 +364,7 @@ def run_analysis(
     ctx = _Ctx(
         cfg=cfg, t=t, ps=ps, lg=lg, analysed=analysed,
         strata=strata if match_feats else None, n_strata=n_strata, caliper_abs=caliper_abs,
-        D=D, groups=groups, Y=Y, M=M, outcomes=outcomes, raw_e=raw_e, raw_c=raw_c,
+        D=D, groups=groups, Y=Y, M=M, X_model=model_enc.X, outcomes=outcomes, raw_e=raw_e, raw_c=raw_c,
         X_bal=enc.X, bal_names=enc.names, bal_sources=enc.sources, bal_dummy=enc.is_dummy,
         roles=roles, ps_edges=np.asarray(overlap.histogram.edges),
     )
@@ -432,7 +445,18 @@ def _run_method(method: Method, ctx: _Ctx, report: ProgressFn) -> MethodResult:
     wa, ta = w[idx], t[idx]
     ess_e, ess_c = kish_ess(wa[ta == 1]), kish_ess(wa[ta == 0])
     n_c_used = int(((wa > 0) & (ta == 0)).sum())
-    if method != "nn_matching" and n_c_used and ess_c < 0.2 * n_c_used:
+    if method == "nn_matching" and info.match is not None:
+        mr = info.match
+        if mr.n_exposed_matched and (
+            (n_c_used and ess_c < 0.2 * n_c_used)
+            or mr.n_unique_controls_used < max(2.0, 0.1 * mr.n_exposed_matched)
+        ):
+            warn.append(
+                f"Only {mr.n_unique_controls_used} distinct controls used for {mr.n_exposed_matched} matched "
+                f"exposed; control ESS {ess_c:.1f}: the estimate rests on very few controls "
+                "(consider a larger match_ratio, IPW or overlap weights)"
+            )
+    elif n_c_used and ess_c < 0.2 * n_c_used:
         warn.append(f"Low control effective sample size ({ess_c:.0f} of {n_c_used}): extreme weights")
     pos = wa[wa > 0]
     weights = WeightSummary(
@@ -456,24 +480,66 @@ def _run_method(method: Method, ctx: _Ctx, report: ProgressFn) -> MethodResult:
     se_an = analytic_se(e, c)
 
     # ---- bootstrap ------------------------------------------------------- #
+    # Weighting methods: the PS model is refitted in every replicate (logistic only -- cheap),
+    # so the SE reflects PS estimation; holding the PS fixed makes IPW / overlap SEs roughly
+    # 2x too large. Replicates resample the pre-trim sample and re-apply the trim rule, as the
+    # point estimate does. NN matching keeps the PS fixed and re-matches each replicate: the
+    # naive bootstrap is only approximate for matching (Abadie & Imbens 2008), but simulations
+    # show it is well calibrated for matching with replacement here.
     B = int(cfg.n_bootstrap)
     se_bs = None
+    refit = method != "nn_matching" and cfg.model_type == "logistic"
+    if B > 0 and method != "nn_matching" and not refit:
+        warn.append(
+            f"Bootstrap SEs hold the {cfg.model_type} propensity model fixed (refitting is only done for "
+            "logistic models), which tends to overstate SEs for weighting methods"
+        )
+    if B == 0:
+        warn.append(
+            "Analytic SEs (n_bootstrap=0) ignore estimation of the propensity score"
+            + (" and the reuse/pairing of matched controls" if method == "nn_matching" else "")
+            + "; use the bootstrap for reliable CIs and p-values"
+        )
     if B > 0:
         rng = np.random.default_rng(cfg.random_state)
-        e_pos, c_pos = idx[t[idx] == 1], idx[t[idx] == 0]
+        pool = np.arange(n) if refit else idx
+        e_pos, c_pos = pool[t[pool] == 1], pool[t[pool] == 0]
         ne, nc = len(e_pos), len(c_pos)
         lifts = np.empty((B,) + e.sw.shape)
         step = max(1, B // 20)
         for b in range(B):
             bi = np.concatenate([e_pos[rng.integers(0, ne, ne)], c_pos[rng.integers(0, nc, nc)]])
+            if refit:
+                tb = t[bi]
+                try:
+                    psb, _ = fit_propensity(ctx.X_model[bi], tb, cfg.model_type, cfg.random_state, ps_only=True)
+                except Exception:  # noqa: BLE001 - a degenerate replicate is simply skipped
+                    lifts[b] = np.nan
+                    continue
+                if cfg.trim != "none":
+                    kb = trim_mask(psb, tb, cfg.trim)
+                    bi, psb, tb = bi[kb], psb[kb], tb[kb]
+                    if (tb == 1).sum() < 2 or (tb == 0).sum() < 2:
+                        lifts[b] = np.nan
+                        continue
+                lgb = logit(psb)
+            else:
+                psb, lgb = ctx.ps[bi], ctx.lg[bi]
             stb = ctx.strata[bi] if ctx.strata is not None else None
-            wb_sub, _ = _adjust(method, ctx.ps[bi], ctx.lg[bi], t[bi], stb, cfg, ctx.caliper_abs)
+            wb_sub, _ = _adjust(method, psb, lgb, t[bi], stb, cfg, ctx.caliper_abs)
             wb = np.bincount(bi, weights=wb_sub, minlength=n)
             with np.errstate(divide="ignore", invalid="ignore"):
                 lifts[b] = lift_only(wb, t, ctx.D, ctx.Y, ctx.M)
             if b % step == 0:
                 report(0.1 + 0.85 * b / B, f"{method}: bootstrapping ({b}/{B})")
         se_bs = bootstrap_se(lifts)
+
+    lift_unclipped = None
+    if info.w_unclipped is not None:
+        w_unc = np.zeros(n)
+        w_unc[idx] = normalize_within_group(info.w_unclipped, t[idx])
+        with np.errstate(divide="ignore", invalid="ignore"):
+            lift_unclipped = lift_only(w_unc, t, ctx.D, ctx.Y, ctx.M)
 
     # ---- contrasts ------------------------------------------------------- #
     report(0.96, f"{method}: contrasts")
@@ -510,6 +576,14 @@ def _run_method(method: Method, ctx: _Ctx, report: ProgressFn) -> MethodResult:
             )
             if g == 0:
                 contrasts.append(OutcomeContrast(**fields))
+                if lift_unclipped is not None and cfg.weight_clip:
+                    unc, clp = float(lift_unclipped[0, k]), fields["lift"]
+                    if math.isfinite(unc) and abs(unc - clp) > 0.25 * fields["se"]:
+                        warn.append(
+                            f"IPW weight clipping at p{cfg.weight_clip * 100:g} shifted the {od.name} estimate "
+                            f"from {unc:.3g} (unclipped) to {clp:.3g}; clipping trades bias for variance and "
+                            "changes the effective estimand (consider overlap weights or trimming instead)"
+                        )
             else:
                 subgroups.append(SubgroupContrast(subgroup_column=gcol, subgroup_level=glev, **fields))
 

@@ -100,3 +100,50 @@ def test_frontend_served_with_spa_fallback(app_factory, tmp_path):
         assert "spa" in c.get("/results/abc").text
         assert c.get("/api/health").json()["status"] == "ok"
         assert c.get("/api/does-not-exist").status_code == 404
+
+
+def test_chunked_upload_over_limit_rejected(app_factory):
+    """No Content-Length (chunked): the body is counted as it streams in and capped with 413."""
+    boundary = "testboundary"
+    head = (
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"big.csv\"\r\n"
+        "Content-Type: text/csv\r\n\r\na,b\r\n"
+    ).encode()
+    tail = f"\r\n--{boundary}--\r\n".encode()
+    sent = {"bytes": 0}
+
+    def body():
+        yield head
+        for _ in range(3 * 64):  # 3 MB against a 1 MB (+1 MB overhead) limit
+            sent["bytes"] += 16 * 1024
+            yield b"1,2\n" * 4096
+        yield tail
+
+    with app_factory(max_upload_mb=1) as c:
+        r = c.post(
+            "/api/datasets",
+            content=body(),
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+        assert r.status_code == 413, r.text
+        assert "upload limit" in r.json()["detail"]
+        assert c.get("/api/datasets").json() == []
+        # a small chunked upload still works
+        small = [head + b"1,2\n" * 20, tail]
+        r = c.post(
+            "/api/datasets",
+            content=iter(small),
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        )
+        assert r.status_code == 201, r.text
+
+
+def test_spa_fallback_does_not_mask_api_or_assets(app_factory, tmp_path):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<html>spa</html>")
+    with app_factory(frontend_dist=dist) as c:
+        r = c.get("/api/datasets/..%2f..%2fetc")
+        assert r.status_code == 404 and "spa" not in r.text
+        assert c.get("/assets/missing.js").status_code == 404
+        assert "spa" in c.get("/runs/abc").text

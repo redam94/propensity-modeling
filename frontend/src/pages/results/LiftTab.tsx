@@ -72,7 +72,7 @@ export function ContrastTable({ method, alpha }: { method: MethodResult; alpha: 
               </td>
               <td className="num">{fmtRelLift(c.relative_lift)}</td>
               <td className="num small">{fmtCI(c.ci_low, c.ci_high, c.outcome_type)}</td>
-              <td className="num">{fmtP(c.p_value)}</td>
+              <td className="num">{fmtP(c.p_value, alpha)}</td>
               <td>
                 <SigBadge p={c.p_value} lift={c.lift} alpha={alpha} />
               </td>

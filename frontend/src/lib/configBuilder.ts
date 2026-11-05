@@ -84,7 +84,7 @@ export const DEFAULT_OPTIONS: OptionsState = {
   caliper: 0.2,
   match_ratio: 1,
   replacement: true,
-  useWeightClip: true,
+  useWeightClip: false,
   weight_clip: 0.99,
   n_strata: 5,
   trim: "none",

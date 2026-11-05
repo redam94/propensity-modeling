@@ -74,7 +74,8 @@ def recode_outcome(
     """Recode an outcome column to a float vector.
 
     * ``positive_values`` given -> 1 if value in list else 0 (missing stays missing)
-    * exactly two distinct values -> 0/1 (yes/true/1/larger number -> 1)
+    * values {0, 1} -> binary; two text labels -> binary when one is a known yes/no label (note says which)
+    * any other numeric pair (e.g. SPSS 1=Yes/2=No) -> continuous with a note; set positive_values
     * numeric -> continuous
     * otherwise ValueError
     """
@@ -96,17 +97,24 @@ def recode_outcome(
     if not distinct:
         raise ValueError(f"Outcome column '{name}' has no non-missing values")
     if len(distinct) <= 2:
-        pos_key = _positive_key(distinct, name)
+        pos_key, note = _positive_key(distinct, name)
         if pos_key is not None:
             for i, k in enumerate(keys):
                 if k is not None:
                     y[i] = 1.0 if k == pos_key else 0.0
-            return OutcomeData(name, y, "binary")
+            return OutcomeData(name, y, "binary", note)
     if all(k[0] == "n" for k in distinct):
         for i, k in enumerate(keys):
             if k is not None:
                 y[i] = float(k[1])
-        return OutcomeData(name, y, "continuous")
+        note = None
+        if len(distinct) == 2:
+            levels = sorted(_fmt_num(k[1]) for k in distinct)
+            note = (
+                f"Outcome '{name}' has two numeric levels {levels}; treated as continuous. "
+                f"Set outcome_positive_values (e.g. [1] for SPSS 1=Yes/2=No) to analyse it as binary."
+            )
+        return OutcomeData(name, y, "continuous", note)
     labels = sorted(str(k[1]) for k in distinct)[:8]
     raise ValueError(
         f"Outcome '{name}' is non-numeric with {len(distinct)} levels (e.g. {labels}); "
@@ -114,26 +122,49 @@ def recode_outcome(
     )
 
 
-def _positive_key(distinct: set, name: str) -> Optional[Key]:
+def _fmt_num(v: Any) -> Any:
+    f = float(v)
+    return int(f) if f.is_integer() else f
+
+
+def _positive_key(distinct: set, name: str) -> Tuple[Optional[Key], Optional[str]]:
+    """Pick the level coded 1 for a <= 2-level outcome -> (key or None, note).
+
+    Numeric pairs are only auto-recoded when they are exactly {0, 1}: survey
+    exports commonly code 1=Yes / 2=No, so "larger number = positive" would
+    silently flip the sign of the lift. Other numeric pairs return None
+    (-> analysed as continuous, with a note)."""
     ks = list(distinct)
     if len(ks) == 1:
         k = ks[0]
         if k[0] == "n":
-            return None  # constant number -> continuous
+            return None, None  # constant number -> continuous
         if k[1] in POSITIVE_LABELS:
-            return k
+            return k, f"Outcome '{name}' has a single level '{k[1]}', treated as positive (1)"
         if k[1] in NEGATIVE_LABELS:
-            return ("__none__", None)
+            return ("__none__", None), f"Outcome '{name}' has a single level '{k[1]}', treated as negative (0)"
         raise ValueError(f"Outcome '{name}' has a single non-numeric level; specify outcome_positive_values")
     a, b = ks
     if a[0] == "n" and b[0] == "n":
-        return a if a[1] > b[1] else b
+        if {float(a[1]), float(b[1])} == {0.0, 1.0}:
+            return (a if float(a[1]) == 1.0 else b), None
+        return None, None
+    pos = None
     for k in ks:
         if k[0] == "s" and k[1] in POSITIVE_LABELS:
-            return k
-    for k, other in ((a, b), (b, a)):
-        if k[0] == "s" and k[1] in NEGATIVE_LABELS:
-            return other
+            pos = k
+            break
+    if pos is None:
+        for k, other in ((a, b), (b, a)):
+            if k[0] == "s" and k[1] in NEGATIVE_LABELS:
+                pos = other
+                break
+    if pos is not None:
+        neg = b if pos == a else a
+        return pos, (
+            f"Outcome '{name}': '{_fmt_num(pos[1]) if pos[0] == 'n' else pos[1]}' treated as positive (1), "
+            f"'{_fmt_num(neg[1]) if neg[0] == 'n' else neg[1]}' as 0"
+        )
     raise ValueError(
         f"Outcome '{name}' has two levels {[str(a[1]), str(b[1])]} and it is unclear which is positive; "
         f"specify outcome_positive_values"

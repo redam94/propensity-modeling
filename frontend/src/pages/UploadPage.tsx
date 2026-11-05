@@ -5,17 +5,10 @@ import { deleteDataset, getDataset, listDatasets, uploadDataset } from "../api/c
 import type { ColumnKind, DatasetProfile } from "../api/types";
 import { Callout, Card, Empty, ErrorBox, Icon, Loading, ProgressBar, Spinner } from "../components/ui";
 import { fmtInt } from "../lib/format";
+import { forgetDataset, rememberDataset } from "../lib/lastDataset";
 
 const ACCEPT = ".xlsx,.xls,.csv";
 const ACCEPT_RE = /\.(xlsx|xls|csv)$/i;
-
-function rememberDataset(id: string) {
-  try {
-    localStorage.setItem("lastDatasetId", id);
-  } catch {
-    /* ignore */
-  }
-}
 
 function kindCounts(p: DatasetProfile): [ColumnKind, number][] {
   const m = new Map<ColumnKind, number>();
@@ -32,7 +25,7 @@ function ProfileSummary({ profile, onSheet, sheetLoading }: { profile: DatasetPr
   const navigate = useNavigate();
   const roles = roleSummary(profile);
   const go = () => {
-    rememberDataset(profile.dataset_id);
+    rememberDataset(profile.dataset_id, profile.sheet);
     navigate(`/configure/${profile.dataset_id}${profile.sheet ? `?sheet=${encodeURIComponent(profile.sheet)}` : ""}`);
   };
   return (
@@ -119,7 +112,7 @@ export default function UploadPage() {
     },
     onSuccess: (p) => {
       setCurrent(p);
-      rememberDataset(p.dataset_id);
+      rememberDataset(p.dataset_id, p.sheet);
       qc.setQueryData(["dataset", p.dataset_id, p.sheet ?? null], p);
       qc.invalidateQueries({ queryKey: ["datasets"] });
     },
@@ -129,6 +122,7 @@ export default function UploadPage() {
     mutationFn: ({ id, s }: { id: string; s: string }) => getDataset(id, s),
     onSuccess: (p) => {
       setCurrent(p);
+      rememberDataset(p.dataset_id, p.sheet);
       qc.setQueryData(["dataset", p.dataset_id, p.sheet ?? null], p);
     },
   });
@@ -137,6 +131,7 @@ export default function UploadPage() {
     mutationFn: deleteDataset,
     onSuccess: (_, id) => {
       if (current?.dataset_id === id) setCurrent(null);
+      forgetDataset(id);
       qc.invalidateQueries({ queryKey: ["datasets"] });
     },
   });
@@ -260,7 +255,7 @@ export default function UploadPage() {
                         <Link
                           className="btn sm"
                           to={`/configure/${d.dataset_id}${d.sheet ? `?sheet=${encodeURIComponent(d.sheet)}` : ""}`}
-                          onClick={() => rememberDataset(d.dataset_id)}
+                          onClick={() => rememberDataset(d.dataset_id, d.sheet)}
                         >
                           Configure
                         </Link>

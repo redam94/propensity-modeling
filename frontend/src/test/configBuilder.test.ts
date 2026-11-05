@@ -107,7 +107,7 @@ describe("buildAnalysisConfig", () => {
       subgroup_columns: ["age", "gender"],
       methods: ["ipw", "overlap_weights"],
       caliper: null,
-      weight_clip: 0.99,
+      weight_clip: null,
       estimand: "ATT",
       match_ratio: 1,
       n_bootstrap: 200,

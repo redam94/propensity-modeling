@@ -105,7 +105,7 @@ class AnalysisConfig(BaseModel):
     match_ratio: int = Field(1, ge=1, le=10)  # controls per exposed
     replacement: bool = True
     # weighting
-    weight_clip: Optional[float] = 0.99  # clip weights at this quantile; None = no clip
+    weight_clip: Optional[float] = None  # opt-in cap on IPW weights at this per-group quantile (0.99 = p99); None = no clipping (unbiased)
     n_strata: int = Field(5, ge=2, le=20)  # for stratification
 
     trim: TrimRule = "none"

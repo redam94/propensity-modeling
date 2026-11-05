@@ -41,18 +41,22 @@ scripts/make_sample_excel.py      writes sample_data/brand_lift_sample.xlsx
   Categorical features one-hot encoded (rare levels < 1% pooled into `__other__`), numeric median-imputed with a
   missing-indicator column added when any value is missing.
 * **NN matching**: greedy nearest neighbour on logit(PS), caliper = `caliper × SD(logit PS)`, `match_ratio` controls per
-  exposed, with/without replacement, exact matching within strata formed by `matching_features`. Matched control
+  exposed, with/without replacement, exact matching within strata formed by `matching_features`. Controls tied at the k-th
+  nearest distance all share the match equally. Matched control
   weights = (number of times used) / ratio; exposed weight 1 → ATT. (For ATE with matching, match both directions.)
 * **IPW**: ATT weights exposed=1, control=e/(1-e); ATE weights 1/e and 1/(1-e). Normalised within group. Optional
-  clipping at the `weight_clip` quantile.
+  clipping at the `weight_clip` quantile (off by default; IPW warns if clipping moves an estimate by > 0.25 SE).
 * **Overlap weights**: exposed 1-e, control e (estimand ATO; reported under `estimand` field as configured but label says ATO).
 * **Stratification**: `n_strata` PS quantile strata (by exposed quantiles for ATT), within-stratum weights.
 * **Balance**: SMD = (mean_e − mean_c)/sqrt((var_e + var_c)/2) using the *unadjusted* pooled SD as denominator both
   before and after; weighted means/variances after. |SMD| > 0.1 flagged.
-* **Contrasts**: weighted difference of means. CI by bootstrap (re-running PS fit + adjustment per resample is too
-  slow for interactive use, so bootstrap resamples respondents within group holding the PS model fixed and re-runs the
-  matching/weighting step) when `n_bootstrap > 0`, else analytic (weighted variance / ESS). Two-sided p-value from
-  normal approximation of lift/se. Relative lift = lift / adjusted control mean.
+* **Contrasts**: weighted difference of means. CI = lift ± z·SE. SE by bootstrap when `n_bootstrap > 0`: respondents
+  are resampled within group from the pre-trim sample, the trim rule is re-applied, and for IPW / overlap weights /
+  stratification with a logistic PS model the PS model is **re-fitted** in every replicate (so SEs reflect PS
+  estimation). Gradient boosting / random forest keep the PS fixed (warned as conservative). NN-matching SEs are the
+  naive bootstrap (no Abadie–Imbens correction). With `n_bootstrap = 0`, analytic (weighted variance / ESS) SEs are
+  used and a warning notes they ignore PS estimation. Two-sided p-value from
+normal approximation of lift/se. Relative lift = lift / adjusted control mean.
 * **Overlap/underlap**: common support = [max(min_e,min_c), min(max_e,max_c)] on PS. Regions: control_only (<lower),
   both, exposed_only (>upper) — reported with counts/pct per group. OVL = ∫min(f_e,f_c) via shared-bin histogram
   (40 bins). Trim rules: `common_support` (drop outside support), `crump` (keep 0.1 ≤ e ≤ 0.9).

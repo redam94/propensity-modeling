@@ -2,24 +2,34 @@
  * Lightweight custom SVG charts for statistical displays that recharts
  * does not express well (mirrored histograms, forest plots, love plots).
  */
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useState, type ReactNode } from "react";
 import type { BalanceRow, DensityCurve } from "../api/types";
 import { type Bin, type ForestRow, linear, niceDomain, niceTicks } from "../lib/chartData";
 import type { Palette } from "../lib/theme";
 
-export function useWidth<T extends HTMLElement>(fixed?: number): [React.RefObject<T>, number] {
-  const ref = useRef<T>(null);
+/**
+ * Measure an element's width. Returns a *callback* ref so that whenever the
+ * measured element changes (e.g. a chart goes from its empty state to having
+ * data, or back), the new element is observed and the old observer dropped.
+ */
+export function useWidth<T extends HTMLElement>(fixed?: number): [(el: T | null) => void, number] {
+  const [node, setNode] = useState<T | null>(null);
   const [w, setW] = useState(fixed ?? 0);
+  const ref = useCallback((el: T | null) => setNode(el), []);
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || fixed != null) return;
-    setW(el.clientWidth);
+    if (fixed != null) {
+      setW(fixed);
+      return;
+    }
+    if (!node) return;
+    setW(node.clientWidth);
+    if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver((entries) => {
       for (const e of entries) setW(Math.floor(e.contentRect.width));
     });
-    ro.observe(el);
+    ro.observe(node);
     return () => ro.disconnect();
-  }, [fixed]);
+  }, [fixed, node]);
   return [ref, w];
 }
 

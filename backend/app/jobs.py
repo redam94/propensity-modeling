@@ -26,8 +26,9 @@ Failures
 --------
 Worker exceptions never propagate: ``ValueError`` messages (the analysis package's
 "bad input" signal) are shown verbatim, anything else as ``"TypeName: message"``. A crashed
-worker process (``BrokenProcessPool``, e.g. out-of-memory kill) fails the affected jobs and
-the pool is recreated.
+worker process (``BrokenProcessPool``, e.g. out-of-memory kill) fails the job(s) that were
+running; the pool is recreated and jobs that were still queued are resubmitted to it (at
+most ``MAX_POOL_RETRIES`` times each).
 """
 
 from __future__ import annotations
@@ -56,6 +57,8 @@ log = logging.getLogger(__name__)
 
 TERMINAL = ("completed", "failed", "cancelled")
 RESULT_CACHE_SIZE = 16
+# How often a job that never started is resubmitted after the pool broke under it.
+MAX_POOL_RETRIES = 2
 
 JobFn = Callable[[str, str, str, Any], str]
 
@@ -98,6 +101,8 @@ class _Job:
     task: Optional[asyncio.Task] = None
     executor: Optional[ProcessPoolExecutor] = None
     cancel_requested: bool = False
+    args: tuple = ()
+    pool_retries: int = 0
 
 
 class JobManager:
@@ -240,6 +245,7 @@ class JobManager:
         )
         job = _Job(info=info, config=config)
         args = (aid, config.model_dump_json(), str(data_path), self._progress)
+        job.args = args
         loop = asyncio.get_running_loop()
         try:
             job.executor = self._executor
@@ -275,39 +281,71 @@ class JobManager:
             except Exception:
                 pass
 
+    def _resubmit(self, job: _Job) -> bool:
+        """Re-queue a job that never started on the current pool. Returns False if impossible."""
+        if (
+            job.cancel_requested
+            or self._shutting_down
+            or self._executor is None
+            or not job.args
+            or job.pool_retries >= MAX_POOL_RETRIES
+        ):
+            return False
+        job.pool_retries += 1
+        try:
+            job.executor = self._executor
+            job.future = asyncio.get_running_loop().run_in_executor(self._executor, self._job_fn, *job.args)
+        except (BrokenProcessPool, RuntimeError):
+            log.exception("Could not resubmit analysis %s", job.info.analysis_id)
+            return False
+        log.info("Resubmitted queued analysis %s after a worker crash", job.info.analysis_id)
+        return True
+
     async def _watch(self, job: _Job) -> None:
         aid = job.info.analysis_id
-        assert job.future is not None
-        try:
-            result_json = await job.future
-        except asyncio.CancelledError:
-            if job.cancel_requested:
+        while True:
+            assert job.future is not None
+            try:
+                result_json = await job.future
+                break
+            except asyncio.CancelledError:
+                if job.cancel_requested:
+                    self._finish(job, "cancelled")
+                else:  # shutdown
+                    self._absorb_progress(job)
+                    self._finish(
+                        job,
+                        "failed",
+                        "The server shut down before this analysis finished. Please run it again.",
+                    )
+                return
+            except JobCancelled:
                 self._finish(job, "cancelled")
-            else:  # shutdown
+                return
+            except BrokenProcessPool:
+                # A dead worker breaks the whole pool: every pending future fails, including
+                # jobs that were still queued. Only the ones that had started (the worker
+                # writes a progress entry first thing) can be blamed; the rest are re-queued.
+                # Check before _absorb_progress, which pops the entry.
+                started = self._progress_entry(aid) is not None or job.info.started_at is not None
+                self._replace_executor(job.executor)
+                if not started and self._resubmit(job):
+                    continue  # stays 'queued'
                 self._absorb_progress(job)
                 self._finish(
                     job,
                     "failed",
-                    "The server shut down before this analysis finished. Please run it again.",
+                    "The worker process running this analysis crashed unexpectedly "
+                    "(it may have run out of memory)."
+                    if started
+                    else "The analysis could not start because the worker pool kept crashing. "
+                    "Please run it again.",
                 )
-            return
-        except JobCancelled:
-            self._finish(job, "cancelled")
-            return
-        except BrokenProcessPool:
-            self._absorb_progress(job)
-            self._replace_executor(job.executor)
-            self._finish(
-                job,
-                "failed",
-                "The worker process running this analysis crashed unexpectedly "
-                "(it may have run out of memory).",
-            )
-            return
-        except Exception as exc:
-            self._absorb_progress(job)
-            self._finish(job, "failed", describe_error(exc))
-            return
+                return
+            except Exception as exc:
+                self._absorb_progress(job)
+                self._finish(job, "failed", describe_error(exc))
+                return
         self._absorb_progress(job)
 
         if job.cancel_requested:

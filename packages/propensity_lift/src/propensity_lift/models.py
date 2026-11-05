@@ -70,8 +70,12 @@ def fit_propensity(
     model_type: ModelType = "logistic",
     random_state: int = 42,
     source_features: Optional[Sequence[str]] = None,
-) -> Tuple[np.ndarray, ModelSummary]:
-    """Fit P(exposed | X). Returns (ps, ModelSummary). ``t`` is 0/1."""
+    ps_only: bool = False,
+) -> Tuple[np.ndarray, Optional[ModelSummary]]:
+    """Fit P(exposed | X). Returns (ps, ModelSummary). ``t`` is 0/1.
+
+    ``ps_only=True`` skips the summary (AUC, importance, calibration) and returns
+    ``(ps, None)`` -- used for cheap refits inside bootstrap replicates."""
     t = np.asarray(t).astype(int)
     n, p = X.shape
     sources = list(source_features) if source_features is not None else [f"x{i}" for i in range(p)]
@@ -115,6 +119,8 @@ def fit_propensity(
         raise ValueError(f"Unknown model_type {model_type}")
 
     ps = np.clip(np.asarray(ps, dtype=float), EPS, 1 - EPS)
+    if ps_only:
+        return ps, None
     try:
         auc = float(roc_auc_score(t, ps)) if 0 < t.sum() < n else 0.5
     except ValueError:

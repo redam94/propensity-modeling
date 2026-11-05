@@ -49,8 +49,36 @@ def _fmt(cols: Iterable[str]) -> str:
     return ", ".join(f"'{c}'" for c in cols)
 
 
-def check_columns(config: AnalysisConfig, profile: DatasetProfile) -> List[str]:
+def _finite(x: Any) -> bool:
+    try:
+        return math.isfinite(float(x))
+    except (TypeError, ValueError):
+        return False
+
+
+def check_parameters(config: AnalysisConfig) -> List[str]:
+    """Range checks for numeric options the schema leaves unbounded.
+
+    Out-of-range values would otherwise run and silently produce wrong statistics
+    (inverted CIs for alpha > 0.5, zero matches for caliper <= 0, unclipped weights).
+    """
     errors: List[str] = []
+    if not (_finite(config.alpha) and 0 < config.alpha <= 0.5):
+        errors.append(f"Significance level alpha must be greater than 0 and at most 0.5 (got {config.alpha}).")
+    if config.caliper is not None and not (_finite(config.caliper) and config.caliper > 0):
+        errors.append(
+            f"Caliper must be greater than 0 SDs of logit(PS), or empty for no caliper (got {config.caliper})."
+        )
+    if config.weight_clip is not None and not (_finite(config.weight_clip) and 0.5 < config.weight_clip < 1):
+        errors.append(
+            "Weight clip quantile must be between 0.5 and 1 (exclusive), or empty for no clipping "
+            f"(got {config.weight_clip})."
+        )
+    return errors
+
+
+def check_columns(config: AnalysisConfig, profile: DatasetProfile) -> List[str]:
+    errors: List[str] = check_parameters(config)
     available = {c.name for c in profile.columns}
     sheet_label = f" in sheet '{profile.sheet}'" if profile.sheet else ""
 

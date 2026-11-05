@@ -130,7 +130,7 @@ export default function SubgroupsTab({
                   </td>
                   <td className="num">{fmtRelLift(s.relative_lift)}</td>
                   <td className="num small">{fmtCI(s.ci_low, s.ci_high, s.outcome_type)}</td>
-                  <td className="num">{fmtP(s.p_value)}</td>
+                  <td className="num">{fmtP(s.p_value, alpha)}</td>
                   <td>
                     <SigBadge p={s.p_value} lift={s.lift} alpha={alpha} />
                   </td>

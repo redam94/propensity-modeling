@@ -157,18 +157,20 @@ function FeatureOverlapTable({ features }: { features: FeatureOverlap[] }) {
   }, [features, sort, asc, role, q]);
 
   const th = (k: FSort, label: string, num = true) => (
-    <th
-      className={`sortable${num ? " num" : ""}`}
-      onClick={() => {
-        if (sort === k) setAsc(!asc);
-        else {
-          setSort(k);
-          setAsc(k === "ovl" || k === "feature");
-        }
-      }}
-      aria-sort={sort === k ? (asc ? "ascending" : "descending") : "none"}
-    >
-      {label} {sort === k ? (asc ? "▲" : "▼") : ""}
+    <th className={`sortable${num ? " num" : ""}`} aria-sort={sort === k ? (asc ? "ascending" : "descending") : "none"}>
+      <button
+        type="button"
+        className="th-btn"
+        onClick={() => {
+          if (sort === k) setAsc(!asc);
+          else {
+            setSort(k);
+            setAsc(k === "ovl" || k === "feature");
+          }
+        }}
+      >
+        {label} <span aria-hidden="true">{sort === k ? (asc ? "▲" : "▼") : ""}</span>
+      </button>
     </th>
   );
 
@@ -214,10 +216,20 @@ function FeatureOverlapTable({ features }: { features: FeatureOverlap[] }) {
                 <Fragment key={f.feature}>
                   <tr className={`clickable${open === f.feature ? " selected" : ""}`} onClick={() => setOpen(open === f.feature ? null : f.feature)}>
                     <td style={{ fontWeight: 600 }}>
-                      <span className="muted" style={{ display: "inline-block", width: 14 }}>
-                        {open === f.feature ? "▾" : "▸"}
-                      </span>
-                      {f.feature}
+                      <button
+                        type="button"
+                        className="th-btn"
+                        aria-expanded={open === f.feature}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpen(open === f.feature ? null : f.feature);
+                        }}
+                      >
+                        <span className="muted" aria-hidden="true" style={{ display: "inline-block", width: 14 }}>
+                          {open === f.feature ? "▾" : "▸"}
+                        </span>
+                        {f.feature}
+                      </button>
                     </td>
                     <td className="small">{ROLE_LABELS[f.role] ?? f.role}</td>
                     <td>

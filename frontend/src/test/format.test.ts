@@ -36,7 +36,26 @@ describe("formatters", () => {
   it("formats p-values with a <0.001 floor", () => {
     expect(fmtP(0.0004)).toBe("<0.001");
     expect(fmtP(0.0042)).toBe("0.004");
-    expect(fmtP(0.0499)).toBe("0.05");
+    expect(fmtP(0.0499)).toBe("0.0499");
+    expect(fmtP(0.5)).toBe("0.50");
+  });
+
+  it("never rounds a p-value across alpha (shown p agrees with the significance badge)", () => {
+    expect(fmtP(0.0504)).toBe("0.050");
+    expect(fmtP(0.0496)).toBe("0.0496");
+    expect(fmtP(0.04996)).toBe("0.04996");
+    expect(fmtP(0.0996, 0.1)).toBe("0.0996");
+    expect(fmtP(0.0996)).toBe("0.0996"); // 2*alpha "directional" cut-off
+    expect(fmtP(0.012)).toBe("0.012");
+    for (const alpha of [0.01, 0.05, 0.1]) {
+      for (let i = 1; i < 2000; i++) {
+        const p = i / 10000 + 0.00001 * (i % 7);
+        const shown = fmtP(p, alpha);
+        if (shown === "<0.001") continue;
+        expect(Number(shown) < alpha).toBe(p < alpha);
+        expect(Number(shown) < alpha * 2).toBe(p < alpha * 2);
+      }
+    }
     expect(fmtP(0.5)).toBe("0.50");
   });
 

@@ -186,10 +186,12 @@ are reassuring. A large gap between ◇ and the dots means confounding was prese
 ### Sample data sanity check
 `sample_data/brand_lift_sample.xlsx` (seed 0) has confounded exposure: younger respondents, heavy social and
 streaming users, and current brand users are more likely to be exposed. It also has known effects, and
-`unaided_awareness` has **no** effect. Running all four methods shows unaided awareness at a raw +3.6 pp and
-adjusted values between −0.9 and −2.6 pp, none of them significant. The KPIs with real effects shrink towards their
-simulated values: for example, consideration goes from a raw +14.0 pp to +8.5–9.7 pp adjusted, against a true ATT of
-+8.4 pp.
+`unaided_awareness` has **no** effect. Running all four methods with `sample_analysis_config()` shows unaided
+awareness at a raw +3.6 pp and adjusted values between −2.6 and −5.3 pp. The three weighting methods are not
+significant; 1:1 NN matching (the noisiest estimator here, with about 690 distinct controls) is borderline at
+p ≈ 0.046, a reminder that one of 24 tests at α = 0.05 can be a false positive. The KPIs with real effects shrink
+towards their simulated values: for example, consideration goes from a raw +14.0 pp to +8.0 pp adjusted with IPW,
+overlap weights or stratification (+5.3 pp, not significant, with NN matching).
 
 ## Python package
 

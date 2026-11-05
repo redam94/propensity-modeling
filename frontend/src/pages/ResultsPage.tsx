@@ -5,6 +5,7 @@ import { deleteAnalysis, downloadExport, getAnalysis, isActive } from "../api/cl
 import type { AnalysisResult, JobDetail } from "../api/types";
 import { Callout, Card, Empty, ErrorBox, Icon, Kpi, Loading, ProgressBar, Spinner, StatusBadge } from "../components/ui";
 import { elapsedSeconds, fmtDateTime, fmtDuration, fmtInt, fmtNum, fmtPct } from "../lib/format";
+import { useTicker } from "../hooks/useTicker";
 import BalanceTab from "./results/BalanceTab";
 import ConfigTab from "./results/ConfigTab";
 import LiftTab from "./results/LiftTab";
@@ -32,6 +33,8 @@ function JobPending({ job }: { job: JobDetail }) {
       qc.invalidateQueries({ queryKey: ["analyses"] });
     },
   });
+  // Polls that return a deep-equal payload don't re-render; tick so elapsed keeps moving.
+  useTicker(isActive(job.status));
   const el = elapsedSeconds(job.started_at ?? job.submitted_at);
   return (
     <Card>
@@ -150,7 +153,9 @@ function Results({ job, result }: { job: JobDetail; result: AnalysisResult }) {
             <button
               key={t}
               role="tab"
+              id={`tab-${t}`}
               aria-selected={tab === t}
+              aria-controls={`tabpanel-${t}`}
               className={`tab${tab === t ? " on" : ""}`}
               onClick={() => {
                 const next = new URLSearchParams(params);
@@ -163,12 +168,14 @@ function Results({ job, result }: { job: JobDetail; result: AnalysisResult }) {
             </button>
           ))}
         </div>
+        <div role="tabpanel" id={`tabpanel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "lift" && <LiftTab result={result} method={method} onMethod={setMethodKey} />}
         {tab === "overlap" && <OverlapTab result={result} />}
         {tab === "balance" && <BalanceTab result={result} method={method} onMethod={setMethodKey} />}
         {tab === "model" && <ModelTab result={result} />}
         {tab === "subgroups" && <SubgroupsTab result={result} method={method} onMethod={setMethodKey} />}
         {tab === "config" && <ConfigTab config={result.config} />}
+        </div>
       </div>
     </div>
   );

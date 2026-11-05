@@ -150,7 +150,7 @@ export function Seg<T extends string>({
   return (
     <div className="seg" role="group">
       {options.map((o) => (
-        <button key={o.value} type="button" className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>
+        <button key={o.value} type="button" aria-pressed={o.value === value} className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>
           {o.label}
         </button>
       ))}
