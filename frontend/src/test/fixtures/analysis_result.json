@@ -1,0 +1,699 @@
+{
+ "analysis_id": "an_fixture",
+ "config": {
+  "dataset_id": "ds123",
+  "sheet": "Sheet1",
+  "name": "Fixture run",
+  "treatment_column": "group",
+  "exposed_values": [
+   "Exposed"
+  ],
+  "control_values": null,
+  "outcome_columns": [
+   "aware",
+   "purchase_intent"
+  ],
+  "outcome_positive_values": {},
+  "model_features": [
+   "age",
+   "heavy_tv"
+  ],
+  "matching_features": [
+   "region",
+   "heavy_tv"
+  ],
+  "include_matching_in_model": true,
+  "subgroup_columns": [
+   "gender"
+  ],
+  "model_type": "logistic",
+  "methods": [
+   "nn_matching",
+   "ipw"
+  ],
+  "estimand": "ATT",
+  "caliper": 0.2,
+  "match_ratio": 1,
+  "replacement": true,
+  "weight_clip": 0.99,
+  "n_strata": 5,
+  "trim": "none",
+  "missing_strategy": "impute",
+  "n_bootstrap": 200,
+  "alpha": 0.05,
+  "random_state": 42
+ },
+ "created_at": "2026-11-05T10:00:00Z",
+ "duration_seconds": 4.2,
+ "sample": {
+  "n_rows_input": 305,
+  "n_exposed": 100,
+  "n_control": 200,
+  "n_dropped_treatment_missing": 5,
+  "n_dropped_feature_missing": 0,
+  "n_analysed_exposed": 100,
+  "n_analysed_control": 200
+ },
+ "model": {
+  "model_type": "logistic",
+  "auc": 0.71,
+  "n_encoded_features": 6,
+  "feature_importance": [
+   {
+    "feature": "age",
+    "importance": 0.5
+   },
+   {
+    "feature": "heavy_tv",
+    "importance": 0.3
+   },
+   {
+    "feature": "region",
+    "importance": 0.2
+   }
+  ],
+  "calibration": [
+   [
+    0.1,
+    0.12,
+    30
+   ],
+   [
+    0.3,
+    0.28,
+    30
+   ],
+   [
+    0.5,
+    0.52,
+    30
+   ],
+   [
+    0.7,
+    0.69,
+    30
+   ],
+   [
+    0.9,
+    0.88,
+    30
+   ]
+  ]
+ },
+ "overlap": {
+  "histogram": {
+   "edges": [
+    0.0,
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1.0
+   ],
+   "exposed_counts": [
+    5,
+    20,
+    40,
+    25,
+    10
+   ],
+   "control_counts": [
+    60,
+    80,
+    40,
+    15,
+    5
+   ],
+   "exposed_density": [
+    0.25,
+    1.0,
+    2.0,
+    1.25,
+    0.5
+   ],
+   "control_density": [
+    1.5,
+    2.0,
+    1.0,
+    0.375,
+    0.125
+   ]
+  },
+  "density": {
+   "x": [
+    0.0,
+    0.25,
+    0.5,
+    0.75,
+    1.0
+   ],
+   "exposed": [
+    0.1,
+    1.0,
+    2.0,
+    1.0,
+    0.2
+   ],
+   "control": [
+    1.4,
+    1.9,
+    0.9,
+    0.3,
+    0.05
+   ]
+  },
+  "exposed_quantiles": {
+   "min": 0.05,
+   "p05": 0.12,
+   "p25": 0.33,
+   "median": 0.5,
+   "p75": 0.64,
+   "p95": 0.85,
+   "max": 0.97,
+   "mean": 0.49
+  },
+  "control_quantiles": {
+   "min": 0.01,
+   "p05": 0.03,
+   "p25": 0.12,
+   "median": 0.25,
+   "p75": 0.41,
+   "p95": 0.66,
+   "max": 0.92,
+   "mean": 0.28
+  },
+  "common_support_lower": 0.05,
+  "common_support_upper": 0.92,
+  "regions": [
+   {
+    "region": "control_only",
+    "lower": 0.0,
+    "upper": 0.05,
+    "n_exposed": 0,
+    "n_control": 12,
+    "pct_exposed": 0.0,
+    "pct_control": 6.0
+   },
+   {
+    "region": "both",
+    "lower": 0.05,
+    "upper": 0.92,
+    "n_exposed": 97,
+    "n_control": 188,
+    "pct_exposed": 97.0,
+    "pct_control": 94.0
+   },
+   {
+    "region": "exposed_only",
+    "lower": 0.92,
+    "upper": 1.0,
+    "n_exposed": 3,
+    "n_control": 0,
+    "pct_exposed": 3.0,
+    "pct_control": 0.0
+   }
+  ],
+  "overlap_coefficient": 0.68,
+  "n_trimmed_exposed": 0,
+  "n_trimmed_control": 0
+ },
+ "feature_overlap": [
+  {
+   "feature": "age",
+   "role": "model",
+   "kind": "numeric",
+   "overlap_coefficient": 0.8,
+   "pct_exposed_unsupported": 1.0,
+   "pct_control_unsupported": 4.5,
+   "exposed_only_levels": [],
+   "control_only_levels": [],
+   "levels": [],
+   "histogram": {
+    "edges": [
+     0.0,
+     0.2,
+     0.4,
+     0.6,
+     0.8,
+     1.0
+    ],
+    "exposed_counts": [
+     5,
+     20,
+     40,
+     25,
+     10
+    ],
+    "control_counts": [
+     60,
+     80,
+     40,
+     15,
+     5
+    ],
+    "exposed_density": [
+     0.25,
+     1.0,
+     2.0,
+     1.25,
+     0.5
+    ],
+    "control_density": [
+     1.5,
+     2.0,
+     1.0,
+     0.375,
+     0.125
+    ]
+   },
+   "exposed_range": [
+    18.0,
+    64.0
+   ],
+   "control_range": [
+    18.0,
+    75.0
+   ]
+  },
+  {
+   "feature": "region",
+   "role": "matching",
+   "kind": "categorical",
+   "overlap_coefficient": 0.9,
+   "pct_exposed_unsupported": 2.0,
+   "pct_control_unsupported": 0.0,
+   "exposed_only_levels": [
+    "Islands"
+   ],
+   "control_only_levels": [],
+   "levels": [
+    {
+     "level": "North",
+     "n_exposed": 40,
+     "n_control": 60,
+     "pct_exposed": 40.0,
+     "pct_control": 30.0
+    },
+    {
+     "level": "South",
+     "n_exposed": 58,
+     "n_control": 140,
+     "pct_exposed": 58.0,
+     "pct_control": 70.0
+    },
+    {
+     "level": "Islands",
+     "n_exposed": 2,
+     "n_control": 0,
+     "pct_exposed": 2.0,
+     "pct_control": 0.0
+    }
+   ],
+   "histogram": null,
+   "exposed_range": null,
+   "control_range": null
+  }
+ ],
+ "methods": [
+  {
+   "method": "nn_matching",
+   "label": "1:1 NN matching (caliper 0.2)",
+   "estimand": "ATT",
+   "n_exposed_used": 100,
+   "n_control_used": 180,
+   "balance": [
+    {
+     "variable": "age",
+     "source_feature": "age",
+     "role": "model",
+     "mean_exposed_before": 34.2,
+     "mean_control_before": 41.0,
+     "smd_before": -0.45,
+     "var_ratio_before": 0.9,
+     "mean_exposed_after": 34.2,
+     "mean_control_after": 34.8,
+     "smd_after": -0.04,
+     "var_ratio_after": 1.02
+    },
+    {
+     "variable": "region=North",
+     "source_feature": "region",
+     "role": "matching",
+     "mean_exposed_before": 0.4,
+     "mean_control_before": 0.3,
+     "smd_before": 0.21,
+     "var_ratio_before": null,
+     "mean_exposed_after": 0.4,
+     "mean_control_after": 0.4,
+     "smd_after": 0.0,
+     "var_ratio_after": null
+    },
+    {
+     "variable": "heavy_tv",
+     "source_feature": "heavy_tv",
+     "role": "both",
+     "mean_exposed_before": 0.6,
+     "mean_control_before": 0.45,
+     "smd_before": 0.3,
+     "var_ratio_before": null,
+     "mean_exposed_after": 0.6,
+     "mean_control_after": 0.55,
+     "smd_after": 0.12,
+     "var_ratio_after": null
+    }
+   ],
+   "balance_summary": {
+    "max_abs_smd_before": 0.45,
+    "max_abs_smd_after": 0.12,
+    "mean_abs_smd_before": 0.32,
+    "mean_abs_smd_after": 0.053,
+    "n_imbalanced_before": 3,
+    "n_imbalanced_after": 1
+   },
+   "contrasts": [
+    {
+     "outcome": "aware",
+     "outcome_type": "binary",
+     "n_exposed": 100,
+     "n_control": 200,
+     "effective_n_control": 150.5,
+     "exposed_mean": 0.62,
+     "control_mean_raw": 0.48,
+     "control_mean_adjusted": 0.5,
+     "raw_diff": 0.14,
+     "lift": 0.12,
+     "relative_lift": 24.0,
+     "se": 0.03,
+     "ci_low": 0.0612,
+     "ci_high": 0.1788,
+     "p_value": 0.0004,
+     "significant": true,
+     "ci_method": "bootstrap"
+    },
+    {
+     "outcome": "purchase_intent",
+     "outcome_type": "continuous",
+     "n_exposed": 100,
+     "n_control": 200,
+     "effective_n_control": 150.5,
+     "exposed_mean": 3.4,
+     "control_mean_raw": 3.1,
+     "control_mean_adjusted": 3.25,
+     "raw_diff": 0.3,
+     "lift": 0.15,
+     "relative_lift": 4.615385,
+     "se": 0.1,
+     "ci_low": -0.046,
+     "ci_high": 0.346,
+     "p_value": 0.13,
+     "significant": false,
+     "ci_method": "bootstrap"
+    }
+   ],
+   "subgroups": [
+    {
+     "outcome": "aware",
+     "outcome_type": "binary",
+     "n_exposed": 100,
+     "n_control": 200,
+     "effective_n_control": 150.5,
+     "exposed_mean": 0.65,
+     "control_mean_raw": 0.5,
+     "control_mean_adjusted": 0.52,
+     "raw_diff": 0.15,
+     "lift": 0.13,
+     "relative_lift": 25.0,
+     "se": 0.05,
+     "ci_low": 0.032,
+     "ci_high": 0.228,
+     "p_value": 0.01,
+     "significant": true,
+     "ci_method": "bootstrap",
+     "subgroup_column": "gender",
+     "subgroup_level": "Female"
+    },
+    {
+     "outcome": "aware",
+     "outcome_type": "binary",
+     "n_exposed": 100,
+     "n_control": 200,
+     "effective_n_control": 150.5,
+     "exposed_mean": 0.58,
+     "control_mean_raw": 0.46,
+     "control_mean_adjusted": 0.5,
+     "raw_diff": 0.12,
+     "lift": 0.08,
+     "relative_lift": 16.0,
+     "se": 0.06,
+     "ci_low": -0.0376,
+     "ci_high": 0.1976,
+     "p_value": 0.18,
+     "significant": false,
+     "ci_method": "bootstrap",
+     "subgroup_column": "gender",
+     "subgroup_level": "Male"
+    }
+   ],
+   "matching": {
+    "n_exposed_matched": 98,
+    "n_exposed_unmatched": 2,
+    "n_unique_controls_used": 90,
+    "caliper_abs": 0.12,
+    "n_exact_strata": 4
+   },
+   "weights": null,
+   "adjusted_ps_histogram": {
+    "edges": [
+     0.0,
+     0.2,
+     0.4,
+     0.6,
+     0.8,
+     1.0
+    ],
+    "exposed_counts": [
+     5,
+     20,
+     40,
+     25,
+     10
+    ],
+    "control_counts": [
+     6,
+     19,
+     41,
+     24,
+     10
+    ],
+    "exposed_density": [
+     0.25,
+     1.0,
+     2.0,
+     1.25,
+     0.5
+    ],
+    "control_density": [
+     0.3,
+     0.95,
+     2.05,
+     1.2,
+     0.5
+    ]
+   },
+   "warnings": [
+    "2 exposed respondents had no control within the caliper"
+   ]
+  },
+  {
+   "method": "ipw",
+   "label": "IPW (ATT)",
+   "estimand": "ATT",
+   "n_exposed_used": 100,
+   "n_control_used": 180,
+   "balance": [
+    {
+     "variable": "age",
+     "source_feature": "age",
+     "role": "model",
+     "mean_exposed_before": 34.2,
+     "mean_control_before": 41.0,
+     "smd_before": -0.45,
+     "var_ratio_before": 0.9,
+     "mean_exposed_after": 34.2,
+     "mean_control_after": 34.8,
+     "smd_after": -0.04,
+     "var_ratio_after": 1.02
+    },
+    {
+     "variable": "region=North",
+     "source_feature": "region",
+     "role": "matching",
+     "mean_exposed_before": 0.4,
+     "mean_control_before": 0.3,
+     "smd_before": 0.21,
+     "var_ratio_before": null,
+     "mean_exposed_after": 0.4,
+     "mean_control_after": 0.4,
+     "smd_after": 0.0,
+     "var_ratio_after": null
+    },
+    {
+     "variable": "heavy_tv",
+     "source_feature": "heavy_tv",
+     "role": "both",
+     "mean_exposed_before": 0.6,
+     "mean_control_before": 0.45,
+     "smd_before": 0.3,
+     "var_ratio_before": null,
+     "mean_exposed_after": 0.6,
+     "mean_control_after": 0.55,
+     "smd_after": 0.12,
+     "var_ratio_after": null
+    }
+   ],
+   "balance_summary": {
+    "max_abs_smd_before": 0.45,
+    "max_abs_smd_after": 0.12,
+    "mean_abs_smd_before": 0.32,
+    "mean_abs_smd_after": 0.053,
+    "n_imbalanced_before": 3,
+    "n_imbalanced_after": 1
+   },
+   "contrasts": [
+    {
+     "outcome": "aware",
+     "outcome_type": "binary",
+     "n_exposed": 100,
+     "n_control": 200,
+     "effective_n_control": 150.5,
+     "exposed_mean": 0.62,
+     "control_mean_raw": 0.48,
+     "control_mean_adjusted": 0.505,
+     "raw_diff": 0.14,
+     "lift": 0.115,
+     "relative_lift": 22.772277,
+     "se": 0.03,
+     "ci_low": 0.0562,
+     "ci_high": 0.1738,
+     "p_value": 0.0004,
+     "significant": true,
+     "ci_method": "bootstrap"
+    },
+    {
+     "outcome": "purchase_intent",
+     "outcome_type": "continuous",
+     "n_exposed": 100,
+     "n_control": 200,
+     "effective_n_control": 150.5,
+     "exposed_mean": 3.4,
+     "control_mean_raw": 3.1,
+     "control_mean_adjusted": 3.25,
+     "raw_diff": 0.3,
+     "lift": 0.15,
+     "relative_lift": 4.615385,
+     "se": 0.1,
+     "ci_low": -0.046,
+     "ci_high": 0.346,
+     "p_value": 0.13,
+     "significant": false,
+     "ci_method": "bootstrap"
+    }
+   ],
+   "subgroups": [
+    {
+     "outcome": "aware",
+     "outcome_type": "binary",
+     "n_exposed": 100,
+     "n_control": 200,
+     "effective_n_control": 150.5,
+     "exposed_mean": 0.65,
+     "control_mean_raw": 0.5,
+     "control_mean_adjusted": 0.52,
+     "raw_diff": 0.15,
+     "lift": 0.13,
+     "relative_lift": 25.0,
+     "se": 0.05,
+     "ci_low": 0.032,
+     "ci_high": 0.228,
+     "p_value": 0.01,
+     "significant": true,
+     "ci_method": "bootstrap",
+     "subgroup_column": "gender",
+     "subgroup_level": "Female"
+    },
+    {
+     "outcome": "aware",
+     "outcome_type": "binary",
+     "n_exposed": 100,
+     "n_control": 200,
+     "effective_n_control": 150.5,
+     "exposed_mean": 0.58,
+     "control_mean_raw": 0.46,
+     "control_mean_adjusted": 0.5,
+     "raw_diff": 0.12,
+     "lift": 0.08,
+     "relative_lift": 16.0,
+     "se": 0.06,
+     "ci_low": -0.0376,
+     "ci_high": 0.1976,
+     "p_value": 0.18,
+     "significant": false,
+     "ci_method": "bootstrap",
+     "subgroup_column": "gender",
+     "subgroup_level": "Male"
+    }
+   ],
+   "matching": null,
+   "weights": {
+    "min": 0.05,
+    "max": 4.2,
+    "mean": 1.0,
+    "n_clipped": 2,
+    "ess_exposed": 100.0,
+    "ess_control": 140.3
+   },
+   "adjusted_ps_histogram": {
+    "edges": [
+     0.0,
+     0.2,
+     0.4,
+     0.6,
+     0.8,
+     1.0
+    ],
+    "exposed_counts": [
+     5,
+     20,
+     40,
+     25,
+     10
+    ],
+    "control_counts": [
+     6,
+     19,
+     41,
+     24,
+     10
+    ],
+    "exposed_density": [
+     0.25,
+     1.0,
+     2.0,
+     1.25,
+     0.5
+    ],
+    "control_density": [
+     0.3,
+     0.95,
+     2.05,
+     1.2,
+     0.5
+    ]
+   },
+   "warnings": []
+  }
+ ],
+ "warnings": [
+  "5 respondents had a missing treatment value and were dropped"
+ ]
+}

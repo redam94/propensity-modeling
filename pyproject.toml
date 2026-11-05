@@ -1,0 +1,15 @@
+[project]
+name = "propensity-modeling-workspace"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["propensity-lift", "lift-api"]
+
+[tool.uv]
+dev-dependencies = ["pytest>=8", "httpx>=0.27", "ruff>=0.6"]
+
+[tool.uv.workspace]
+members = ["packages/propensity_lift", "backend"]
+
+[tool.uv.sources]
+propensity-lift = { workspace = true }
+lift-api = { workspace = true }
