@@ -6,10 +6,12 @@ import warnings
 from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
+from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
 from ._utils import EPS, finite
@@ -49,6 +51,19 @@ def _aggregate_importance(raw: np.ndarray, sources: Sequence[str]) -> List[Featu
     return items
 
 
+def _cross_fitted_ps(model, X: np.ndarray, t: np.ndarray, random_state: int, n_folds: int = 5) -> np.ndarray:
+    """Out-of-fold P(exposed) from clones of ``model`` (falls back to in-sample when a group is tiny)."""
+    k = int(min(n_folds, np.bincount(t, minlength=2).min()))
+    if k < 2:
+        return model.predict_proba(X)[:, 1]
+    ps = np.empty(len(t), dtype=float)
+    folds = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
+    for train, test in folds.split(X, t):
+        m = clone(model).fit(X[train], t[train])
+        ps[test] = m.predict_proba(X[test])[:, 1]
+    return ps
+
+
 def fit_propensity(
     X: np.ndarray,
     t: np.ndarray,
@@ -77,8 +92,10 @@ def fit_propensity(
             min_samples_leaf=20, random_state=random_state,
         )
         model.fit(X, t)
-        ps = model.predict_proba(X)[:, 1]
         raw_imp = model.feature_importances_
+        # Cross-fitted (out-of-fold) predictions: in-sample boosted scores are over-confident,
+        # which separates the groups artificially and hurts matching/stratification balance.
+        ps = _cross_fitted_ps(model, X, t, random_state)
     elif model_type == "random_forest":
         model = RandomForestClassifier(
             n_estimators=300, min_samples_leaf=10, max_features="sqrt", oob_score=True,

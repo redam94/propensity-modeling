@@ -171,3 +171,12 @@ def test_cli(tmp_path, small_df, capsys):
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps({**cfg, "treatment_column": "missing_col"}))
     assert cli_main(["run", str(p), "--config", str(bad), "--quiet"]) == 2
+
+
+def test_gradient_boosting_ps_is_cross_fitted(sample_df):
+    """In-sample boosted scores overfit (inflated AUC, poor matched balance); out-of-fold scores should not."""
+    cfg = sample_analysis_config(model_type="gradient_boosting", methods=["nn_matching"], n_bootstrap=0)
+    gb = run_analysis(sample_df, cfg)
+    lr = run_analysis(sample_df, sample_analysis_config(methods=["nn_matching"], n_bootstrap=0))
+    assert gb.model.auc < lr.model.auc + 0.05
+    assert gb.methods[0].balance_summary.max_abs_smd_after < 0.2

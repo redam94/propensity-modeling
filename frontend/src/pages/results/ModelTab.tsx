@@ -66,7 +66,7 @@ export default function ModelTab({ result }: { result: AnalysisResult }) {
                     formatter={(v: number) => [fmtPct(v), "Importance"]}
                     cursor={{ fill: pal.grid, opacity: 0.4 }}
                   />
-                  <Bar dataKey="importance" fill={pal.series[0]} radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="importance" fill={pal.series[0]} radius={[0, 3, 3, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -84,6 +84,7 @@ export default function ModelTab({ result }: { result: AnalysisResult }) {
                     type="number"
                     dataKey="pred"
                     domain={[0, 1]}
+                    ticks={[0, 0.2, 0.4, 0.6, 0.8, 1]}
                     tickFormatter={(v: number) => v.toFixed(1)}
                     tick={{ fill: pal.axis, fontSize: 11 }}
                     stroke={pal.grid}
@@ -93,6 +94,7 @@ export default function ModelTab({ result }: { result: AnalysisResult }) {
                     type="number"
                     dataKey="obs"
                     domain={[0, 1]}
+                    ticks={[0, 0.2, 0.4, 0.6, 0.8, 1]}
                     tickFormatter={(v: number) => v.toFixed(1)}
                     tick={{ fill: pal.axis, fontSize: 11 }}
                     stroke={pal.grid}

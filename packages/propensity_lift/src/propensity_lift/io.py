@@ -186,7 +186,18 @@ def suggest_role(name: str, kind: ColumnKind, n_unique: int, n_rows: int) -> str
         return "outcome"
     if is_id:
         return "id"
+    if tokens & _ADMIN_TOKENS or any(n.startswith(p) for p in _ADMIN_PREFIXES):
+        return "ignore"
     return "model_feature"
+
+
+# Survey/admin fields that are rarely sensible propensity covariates (geo codes, contact
+# details, interview metadata). They are still selectable by hand.
+_ADMIN_TOKENS = {
+    "zip", "zipcode", "postal", "postcode", "phone", "email", "ip", "duration", "completion",
+    "timestamp", "panel", "loi",
+}
+_ADMIN_PREFIXES = ("zip", "postcode", "postal")
 
 
 def profile_column(s: pd.Series, name: str, n_rows: int) -> ColumnProfile:

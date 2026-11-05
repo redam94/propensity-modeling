@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -143,6 +144,14 @@ def _subgroup_labels(s: pd.Series) -> np.ndarray:
     return categorical_labels(s)
 
 
+def _natural_key(level: Any) -> Tuple[Any, ...]:
+    """Sort levels like a human: '18-24' < '25-34' < '55+', '(9.5, 20]' < '(20, 31]', '(missing)' last."""
+    text = str(level)
+    parts = re.split(r"(\d+(?:\.\d+)?)", text)
+    key = tuple((0, float(p), "") if i % 2 else (1, 0.0, p.lower()) for i, p in enumerate(parts) if p != "")
+    return (text in ("(missing)", "__other__"),) + key
+
+
 def _design(
     d: pd.DataFrame, t: np.ndarray, analysed: np.ndarray, subgroup_cols: Sequence[str], warn: List[str]
 ) -> Tuple[np.ndarray, List[Tuple[str, str]]]:
@@ -154,7 +163,7 @@ def _design(
         vc = pd.Series(labels[analysed]).value_counts()
         if len(vc) > MAX_SUBGROUP_LEVELS:
             warn.append(f"Subgroup '{col}': only the {MAX_SUBGROUP_LEVELS} most frequent of {len(vc)} levels analysed")
-        for lv in list(vc.index)[:MAX_SUBGROUP_LEVELS]:
+        for lv in sorted(list(vc.index)[:MAX_SUBGROUP_LEVELS], key=_natural_key):
             m = labels == lv
             ne = int((m & analysed & (t == 1)).sum())
             nc = int((m & analysed & (t == 0)).sum())

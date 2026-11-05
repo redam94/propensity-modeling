@@ -92,3 +92,9 @@ def test_unsupported_ext(tmp_path):
     p.write_text("{}")
     with pytest.raises(ValueError):
         load_table(p)
+
+
+def test_suggest_role_skips_admin_columns():
+    assert suggest_role("zip_code", "numeric", 2900, 3000) == "ignore"
+    assert suggest_role("completion_minutes", "numeric", 300, 3000) == "ignore"
+    assert suggest_role("tv_hours_week", "numeric", 300, 3000) == "model_feature"

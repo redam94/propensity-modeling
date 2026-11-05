@@ -109,8 +109,8 @@ function FeatureDrill({ f, pal }: { f: FeatureOverlap; pal: Palette }) {
                 cursor={{ fill: pal.grid, opacity: 0.4 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="exp" name="Exposed" fill={pal.exposed} radius={[3, 3, 0, 0]} />
-              <Bar dataKey="ctl" name="Control" fill={pal.control} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="exp" name="Exposed" fill={pal.exposed} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="ctl" name="Control" fill={pal.control} radius={[3, 3, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
