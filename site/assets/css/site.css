@@ -107,6 +107,59 @@
   --card-glow: 0.12;
 }
 
+/* Dark mode only: generated art drawn on black. Page headers get a themed piece kept to the edges,
+   and plain bands rotate through faint corner textures (screen-blended so they also sit on --bg-alt). */
+@media (prefers-color-scheme: dark) {
+  .band.band--hero {
+    background:
+      radial-gradient(ellipse 42% 75% at 50% 50%, var(--bg) 35%, color-mix(in srgb, var(--bg) 25%, transparent) 100%),
+      var(--hero-art) center / cover no-repeat,
+      var(--bg);
+  }
+  /* Tight headers are left-aligned, so clear the left side instead of the centre. */
+  .band.band--tight.band--hero {
+    background:
+      linear-gradient(90deg, var(--bg) 40%, color-mix(in srgb, var(--bg) 25%, transparent) 80%),
+      var(--hero-art) right center / cover no-repeat,
+      var(--bg);
+  }
+  .hero--framing { --hero-art: url("../img/hero-framing.webp"); }
+  .hero--identification { --hero-art: url("../img/hero-identification.webp"); }
+  .hero--methods { --hero-art: url("../img/hero-methods.webp"); }
+  .hero--walkthrough { --hero-art: url("../img/hero-walkthrough.webp"); }
+  .hero--use-cases { --hero-art: url("../img/hero-use-cases.webp"); }
+  .hero--api { --hero-art: url("../img/hero-api.webp"); }
+  .hero--404 { --hero-art: url("../img/hero-404.webp"); }
+
+  main > .band:not(.band--hero):not(.band--dark) {
+    background-image: var(--tex);
+    background-position: var(--tex-pos);
+    background-size: 100% auto;
+    background-repeat: no-repeat;
+    background-blend-mode: screen;
+  }
+  main > .band:not(.band--hero):not(.band--dark):nth-of-type(3n + 2) {
+    --tex: url("../img/tex-curves.webp");
+    --tex-pos: left bottom;
+  }
+  main > .band:not(.band--hero):not(.band--dark):nth-of-type(3n) {
+    --tex: url("../img/tex-ripples.webp");
+    --tex-pos: right center;
+  }
+  main > .band:not(.band--hero):not(.band--dark):nth-of-type(3n + 1) {
+    --tex: url("../img/tex-lattice.webp");
+    --tex-pos: right top;
+  }
+}
+@media (prefers-color-scheme: dark) and (max-width: 860px) {
+  .band.band--hero {
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--bg) 20%, transparent), var(--bg) 70%),
+      var(--hero-art) center top / auto 55% no-repeat,
+      var(--bg);
+  }
+}
+
 /* Generated dark textures behind two showcase bands. The left-hand scrim keeps text legible. */
 .band.band--particles,
 .band.band--contours {
