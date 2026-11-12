@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Use cases | propensity_lift</title>
-<meta name="description" content="Recipes for common propensity_lift analyses: standard brand lift, quota-matched samples, top-two-box outcomes, thin overlap, multiple exposure cells, doubly robust estimation, placebo checks, batch runs and the HTTP API, plus how to use segment lift to pick audiences without fooling yourself.">
+<meta name="description" content="Recipes for common propensity_lift analyses: standard brand lift, quota-matched samples, top-two-box outcomes, thin overlap, multiple exposure cells, doubly robust estimation, placebo checks, batch runs and the HTTP API, plus conversion propensity models without an exposed group and how to use segment lift to pick audiences without fooling yourself.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/css/site.css">
 </head>
@@ -384,6 +384,134 @@ curl -OJ localhost:8000/api/analyses/ANALYSIS_ID/export          # .xlsx workboo
   </div>
 </section>
 
+<section class="band" id="conversion-models" data-title="Propensity to convert, without an exposed group">
+  <div class="wrap">
+    <div class="center">
+      <p class="kicker" data-reveal>Without an exposed group</p>
+      <h2 class="headline" data-reveal>A model of who converts is not a model of who to convince.</h2>
+      <p class="lead" data-reveal>In much of marketing, “propensity model” means something else: a classifier fitted on demographics and first-party data to predict who will convert, with no exposed or control group at all. It is a legitimate and useful model. <strong>It is not what this package does, and it cannot tell you whether advertising to the people it ranks highly will change anything.</strong></p>
+    </div>
+
+    <div class="versus" data-reveal>
+      <div class="versus-corner"></div>
+      <div class="versus-head">Propensity to convert</div>
+      <div class="versus-head">Propensity score (this package)</div>
+
+      <div class="versus-row">What it predicts</div>
+      <div>Whether a person converts, buys or signs up.</div>
+      <div>Whether a person was exposed to the campaign.</div>
+
+      <div class="versus-row">Data it needs</div>
+      <div>Customers and non-customers, with demographics and first-party behaviour. No exposure flag.</div>
+      <div>Exposed and unexposed people, the outcome for both, and what drove exposure.</div>
+
+      <div class="versus-row">What it answers</div>
+      <div>Who is likely to convert.</div>
+      <div>How much the campaign changed the outcome.</div>
+
+      <div class="versus-row">What it cannot answer</div>
+      <div>Whether contacting them adds a single conversion.</div>
+      <div>Who to target, on its own. See <a class="link" href="#targeting">picking audiences from lift</a>.</div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/report.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Good for ranking and forecasting.</h3>
+        <p>Ordering leads for a sales team, sizing next quarter's volume, and setting budgets all need a calibrated chance of conversion. <strong>No causal claim is involved.</strong></p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/remedies.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Good for suppression and seeds.</h3>
+        <p>Leaving out people who already converted, or seeding a lookalike audience, uses the score as a description of who your customers resemble.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/hidden.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Silent on incrementality.</h3>
+        <p>The highest scorers are the people most likely to convert <strong>without you</strong>. Whether an ad moves them is a different quantity, and this model never sees it.</p>
+      </div>
+    </div>
+
+    <div class="lab" data-lab="conversion" data-reveal>
+      <div class="lab-grid">
+        <div>
+          <p class="lab-title">Conversion rate among the people you target</p>
+          <p class="lab-note">The number a campaign dashboard reports.</p>
+          <div data-el="rate" style="margin-top:16px"></div>
+          <p class="lab-title" style="margin-top:30px">Extra conversions the ads caused, per 1,000 targeted</p>
+          <p class="lab-note">The number the budget is actually buying.</p>
+          <div data-el="extra" style="margin-top:16px"></div>
+        </div>
+        <div class="lab-side">
+          <div class="control">
+            <label for="conv-budget">Budget reaches the top <output data-el="budget-out" for="conv-budget">20%</output></label>
+            <input type="range" id="conv-budget" data-el="budget" min="5" max="60" step="5" value="20">
+            <small>Of 20,000 people, ranked by each strategy.</small>
+          </div>
+          <div class="control">
+            <p class="lab-note" style="margin-bottom:8px">Who the ad persuades</p>
+            <div class="seg" role="radiogroup" aria-label="Who the ad persuades">
+              <label><input type="radio" name="conv-shape" value="sure" checked><span>Mostly the undecided</span></label>
+              <label><input type="radio" name="conv-shape" value="flat"><span>Everyone equally</span></label>
+              <label><input type="radio" name="conv-shape" value="aligned"><span>Mostly likely buyers</span></label>
+            </div>
+          </div>
+          <div class="readouts">
+            <div class="readout"><b data-el="score-rate">0</b><span>conversion rate, targeting by score</span></div>
+            <div class="readout"><b data-el="score-extra">0</b><span>extra conversions per 1,000, by score</span></div>
+            <div class="readout"><b data-el="random-extra">0</b><span>extra conversions per 1,000, at random</span></div>
+          </div>
+          <div class="lab-verdict" data-el="verdict" aria-live="polite"></div>
+        </div>
+      </div>
+      <p class="lab-note" style="margin-top:22px">The conversion model here is perfect: it knows each person's true chance of converting without the ad. A real one does worse. “By true uplift” is what you would get if you could see each person's response to the ad, which only an experiment can estimate.</p>
+    </div>
+
+    <h3 class="subhead" data-reveal style="margin-top:clamp(56px,7vw,96px)">Where it goes wrong</h3>
+    <div class="tiles" style="margin-top:28px">
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/estimators.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Reporting the top decile's conversion rate as success.</h3>
+        <p>Targeted people convert at a high rate because they were chosen for it. <strong>That rate says nothing about what the campaign added.</strong> Only a comparison with similar people who were not contacted does.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/post-treatment.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Features that leak the outcome.</h3>
+        <p>Account created, cart visits or last login recorded inside the conversion window are partly the conversion itself. The model looks brilliant offline and fails live. <strong>Build every feature from data before a fixed prediction date.</strong></p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/source.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Learning your old media plan.</h3>
+        <p>Past campaigns decided who was contacted, and contacted people convert more. A model trained on that history partly learns who you targeted last time, and recommends them again.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/sensitivity.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Judging it by AUC alone.</h3>
+        <p>AUC measures ranking. Budgets need probabilities that are right on average. Check calibration and conversions by score decile on a later period than the one you trained on.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/unmeasured.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Reading feature importance as cause.</h3>
+        <p>App users converting more does not mean pushing the app creates conversions. Importance describes the prediction, <strong>not what would happen if you changed the feature.</strong></p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/feedback.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>The feedback loop.</h3>
+        <p>Target the high scorers, retrain on what they did, and the low scorers never get a chance to prove the model wrong. The score hardens around your first guess.</p>
+      </div>
+    </div>
+
+    <h3 class="subhead" data-reveal style="margin-top:clamp(56px,7vw,96px)">Doing it properly</h3>
+    <ol class="steps">
+      <li data-reveal><div><h3>Fix a prediction date.</h3><p>Features come only from data before it; the outcome comes from a window after it. Anything recorded in between is off limits.</p></div></li>
+      <li data-reveal><div><h3>Validate on a later period.</h3><p>Train on one quarter, test on the next. Report calibration and conversions by decile next to the AUC.</p></div></li>
+      <li data-reveal><div><h3>Keep a random holdout in every campaign.</h3><p>Leave a random share of each score band uncontacted. <strong>The difference between contacted and held-out people in a band is the lift there</strong>, and the holdout gives the next model unbiased training data.</p></div></li>
+      <li data-reveal><div><h3>Target where the lift is, not where conversion is highest.</h3><p>If the top band converts at 30% with or without the ad and the middle band moves from 8% to 12%, the middle band is the better buy.</p></div></li>
+      <li data-reveal><div><h3>No holdout, but exposure was recorded?</h3><p>Then this package applies. Code who was exposed, use the conversion model's inputs that were fixed before the campaign as covariates, and follow the <a class="link" href="walkthrough.html">walkthrough</a>. Every assumption on the <a class="link" href="identification.html">identification page</a> comes with it.</p></div></li>
+    </ol>
+  </div>
+</section>
+
 <section class="band band--alt" id="targeting" data-title="Picking audiences from lift">
   <div class="wrap">
     <div class="center">
@@ -401,7 +529,7 @@ curl -OJ localhost:8000/api/analyses/ANALYSIS_ID/export          # .xlsx workboo
       <div class="tile tile--third" data-reveal>
         <img class="tile-icon" src="assets/img/icons/outcome-only.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>A response model says who will say yes.</h3>
-        <p>Ranking by predicted awareness or intent finds people who are already aware or already buying. Many would have answered the same way without the ad, so <strong>the spend shows up in the outcome and not in the lift.</strong></p>
+        <p>Ranking by predicted awareness or intent finds people who are already aware or already buying. Many would have answered the same way without the ad, so <strong>the spend shows up in the outcome and not in the lift.</strong> <a class="link" href="#conversion-models">More on conversion models</a>.</p>
       </div>
       <div class="tile tile--third" data-reveal>
         <img class="tile-icon" src="assets/img/icons/balance.webp" alt="" width="56" height="56" loading="lazy" decoding="async">

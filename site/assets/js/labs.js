@@ -4,13 +4,13 @@ import {
   makeRng, sigmoid, fitLogistic, balancingWeights, matchWeights, strataWeights, diffMeans, smd, ess, auc,
   psHistogram, ovl, commonSupport, mean, sd,
 } from "./sim.js";
-import { d3, mirrorHist, estimateRows, lovePlot, weightCurve, whenVisible, countTo, onFrame, tip } from "./charts.js";
+import { d3, mirrorHist, estimateRows, lovePlot, weightCurve, barList, whenVisible, countTo, onFrame, tip } from "./charts.js";
 
 const el = (root, name) => root.querySelector(`[data-el="${name}"]`);
 const signed = (v, d = 2) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(d);
 const clip = (p, lo = 0.02, hi = 0.98) => Float64Array.from(p, (v) => Math.min(hi, Math.max(lo, v)));
 
-const LABS = { dag: dagLab, hidden: hiddenLab, overlap: overlapLab, methods: methodsLab, builder: builderLab, targeting: targetingLab };
+const LABS = { dag: dagLab, hidden: hiddenLab, overlap: overlapLab, methods: methodsLab, builder: builderLab, targeting: targetingLab, conversion: conversionLab };
 document.querySelectorAll("[data-lab]").forEach((root) => {
   const init = LABS[root.getAttribute("data-lab")];
   if (init) whenVisible(root, () => init(root), "200px 0px");
@@ -495,5 +495,64 @@ function targetingLab(root) {
   nIn.addEventListener("input", update);
   spreadIn.addEventListener("input", update);
   rerun.addEventListener("click", () => { seed += 1; update(); });
+  update();
+}
+
+// =============================================================== conversion
+// A perfect propensity-to-convert model targets people who convert anyway; what the ad adds can differ.
+function conversionLab(root) {
+  const N = 20000;
+  const rng = makeRng(31);
+  const x = Float64Array.from({ length: N }, () => rng.n());
+  const p0 = x.map((v) => sigmoid(-2.4 + 1.5 * v)); // chance of converting without the ad
+  const SHAPES = {
+    sure: (v) => 0.1 * Math.exp(-(v * v) / 1.2), // the undecided middle moves; likely buyers convert anyway
+    flat: () => 0.04,
+    aligned: (v) => 0.08 * sigmoid(1.6 * (v - 0.5)),
+  };
+  const budget = el(root, "budget");
+  const byScore = d3.range(N).sort((a, b) => p0[b] - p0[a]);
+  const pct = (v) => (v * 100).toFixed(1) + "%";
+
+  const update = onFrame(() => {
+    const q = Number(budget.value) / 100;
+    el(root, "budget-out").textContent = Math.round(q * 100) + "%";
+    const shape = SHAPES[root.querySelector('input[name="conv-shape"]:checked').value];
+    const tau = Float64Array.from(x, (v, i) => Math.min(shape(v), 1 - p0[i]));
+    const k = Math.round(N * q);
+    const top = (order) => {
+      let rate = 0, extra = 0;
+      for (let j = 0; j < k; j++) { const i = order[j]; rate += p0[i] + tau[i]; extra += tau[i]; }
+      return { rate: rate / k, extra: (1000 * extra) / k };
+    };
+    const score = top(byScore);
+    const uplift = top(d3.range(N).sort((a, b) => tau[b] - tau[a]));
+    let rateAll = 0, extraAll = 0;
+    for (let i = 0; i < N; i++) { rateAll += p0[i] + tau[i]; extraAll += tau[i]; }
+    const random = { rate: rateAll / N, extra: (1000 * extraAll) / N };
+
+    const rows = [["By conversion score", score], ["At random", random], ["By true uplift", uplift]];
+    barList(el(root, "rate"), rows.map(([label, s]) => ({ label, value: s.rate, text: pct(s.rate) })));
+    barList(el(root, "extra"), rows.map(([label, s]) => ({ label, value: s.extra, text: s.extra.toFixed(0) })), { color: "var(--exposed)" });
+    countTo(el(root, "score-rate"), score.rate * 100, (v) => v.toFixed(0) + "%");
+    countTo(el(root, "score-extra"), score.extra, (v) => v.toFixed(0));
+    countTo(el(root, "random-extra"), random.extra, (v) => v.toFixed(0));
+
+    const ratio = score.extra / random.extra;
+    el(root, "score-extra").parentNode.setAttribute("data-tone", ratio < 0.9 ? "bad" : ratio > 1.1 ? "good" : "");
+    const v = el(root, "verdict");
+    if (ratio < 0.9) {
+      setVerdict(v, "bad", "The best-converting audience, the worst buy.",
+        `Targeting by score converts ${pct(score.rate)} of the people reached, against ${pct(random.rate)} at random, and adds ${score.extra.toFixed(0)} conversions per 1,000 against ${random.extra.toFixed(0)}. The high scorers were going to convert anyway.`);
+    } else if (ratio <= 1.1) {
+      setVerdict(v, "", "A great-looking rate, an ordinary return.",
+        `The targeted rate is ${pct(score.rate)}, far above ${pct(random.rate)} at random, yet the ads add about as many conversions as targeting at random. The score picked converters, not persuadables.`);
+    } else {
+      setVerdict(v, "good", "Here the score and the lift line up.",
+        `When likely buyers are also the most persuadable, the score is a good targeting rule. Nothing in conversion data tells you which world you are in. Only a holdout does.`);
+    }
+  });
+  budget.addEventListener("input", update);
+  root.querySelectorAll('input[name="conv-shape"]').forEach((r) => r.addEventListener("change", update));
   update();
 }
