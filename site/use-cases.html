@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Use cases | propensity_lift</title>
-<meta name="description" content="Recipes for common propensity_lift analyses: standard brand lift, quota-matched samples, top-two-box outcomes, thin overlap, multiple exposure cells, doubly robust estimation, placebo checks, batch runs and the HTTP API.">
+<meta name="description" content="Recipes for common propensity_lift analyses: standard brand lift, quota-matched samples, top-two-box outcomes, thin overlap, multiple exposure cells, doubly robust estimation, placebo checks, batch runs and the HTTP API, plus how to use segment lift to pick audiences without fooling yourself.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/css/site.css">
 </head>
@@ -286,7 +286,7 @@ for m in r.methods:
               <dt>How</dt>
               <dd>List the columns in <code>subgroup_columns</code>. Numeric columns with more than 10 values are cut into quintiles. Levels with fewer than 10 respondents in either group are skipped.</dd>
               <dt>The catch</dt>
-              <dd>The weights were built to balance the whole sample. Inside a small segment they may not. Read segment results as descriptive, and name the segments you care about in advance.</dd>
+              <dd>The weights were built to balance the whole sample. Inside a small segment they may not. Read segment results as descriptive, and name the segments you care about in advance. Before using them to choose an audience, read <a class="link" href="#targeting">picking audiences from lift</a>.</dd>
             </dl>
           </div>
           <figure class="code"><pre data-lang="python"><code>r = run_analysis(df, cfg.model_copy(update={
@@ -384,8 +384,124 @@ curl -OJ localhost:8000/api/analyses/ANALYSIS_ID/export          # .xlsx workboo
   </div>
 </section>
 
+<section class="band band--alt" id="targeting" data-title="Picking audiences from lift">
+  <div class="wrap">
+    <div class="center">
+      <p class="kicker" data-reveal>Targeting the next flight</p>
+      <h2 class="headline" data-reveal>Aim at the people the ad moves, not the people it reaches.</h2>
+      <p class="lead" data-reveal>Once a lift study is done, the next question is usually who to buy next time. The model you just fitted looks like it should answer that. <strong>It answers a different question</strong>, and the obvious ways of reusing it send budget to people who would have responded anyway.</p>
+    </div>
+
+    <div class="tiles">
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/exposure-only.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>The propensity score says who you already reach.</h3>
+        <p>It ranks respondents by how likely the media plan was to expose them. Targeting on it buys more of the audience you already have, where comparable controls are scarcest. <strong>It is never a targeting score.</strong></p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/outcome-only.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>A response model says who will say yes.</h3>
+        <p>Ranking by predicted awareness or intent finds people who are already aware or already buying. Many would have answered the same way without the ad, so <strong>the spend shows up in the outcome and not in the lift.</strong></p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/balance.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Lift by segment says where the ad changed something.</h3>
+        <p>The adjusted difference between exposed and comparable controls inside a segment is the only one of the three that measures the ad. It is also the noisiest, and <strong>that is where the trouble starts.</strong></p>
+      </div>
+    </div>
+
+    <div class="lab" data-lab="targeting" data-reveal>
+      <div class="lab-grid">
+        <div>
+          <p class="lab-title">Twelve segments, ranked by estimated lift</p>
+          <p class="lab-note">One simulated survey. The orange row is the segment a ranking would pick. The dashed line is the true average lift across all twelve.</p>
+          <div data-el="rows"></div>
+        </div>
+        <div class="lab-side">
+          <div class="control">
+            <label for="tgt-n">Respondents per group in each segment <output data-el="n-out" for="tgt-n">120</output></label>
+            <input type="range" id="tgt-n" data-el="n" min="40" max="600" step="20" value="120">
+            <small>A 3,000-respondent survey cut twelve ways leaves about 120 exposed and 120 controls per segment.</small>
+          </div>
+          <div class="control">
+            <label for="tgt-spread">How much segments really differ <output data-el="spread-out" for="tgt-spread">not at all</output></label>
+            <input type="range" id="tgt-spread" data-el="spread" min="0" max="3" step="1" value="0">
+            <small>At “not at all”, every segment has the same true lift of +4 points.</small>
+          </div>
+          <button class="chip" type="button" data-el="rerun">Run the survey again</button>
+          <div class="readouts">
+            <div class="readout"><b data-el="pick-est">0</b><span>estimated lift of the picked segment, points</span></div>
+            <div class="readout"><b data-el="pick-true">0</b><span>its true lift, points</span></div>
+            <div class="readout"><b data-el="over">0</b><span>average overstatement of the pick in points, over 2,000 surveys</span></div>
+            <div class="readout"><b data-el="right">0</b><span>surveys where the pick really is the best segment</span></div>
+          </div>
+          <div class="lab-verdict" data-el="verdict" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead" data-reveal style="margin-top:clamp(56px,7vw,96px)">Where it goes wrong</h3>
+    <div class="tiles" style="margin-top:28px">
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/interval.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Taking the top segment.</h3>
+        <p>With a dozen segments, the highest estimate is usually the luckiest sample, not the strongest response. <strong>Its lift shrinks when you buy it.</strong> The lab above shows by how much.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/no-counterpart.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Segments with few controls.</h3>
+        <p>The segment the plan was bought on has the fewest unexposed respondents. Lift there rests on a handful of heavily weighted controls. Read the counts and the interval before the number.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/post-treatment.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Segments the ad defined.</h3>
+        <p>“People who remember the ad” or “site visitors” are selected on the response. <strong>Segment only on what was fixed before the flight</strong>, and on what a media buyer can actually target.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/hidden.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Assuming the effect carries over.</h3>
+        <p>The ATT describes people the campaign reached, at the frequency they got. A new audience is, by definition, people it did not reach. Unmeasured differences, another frequency or another creative can all change the response.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/estimators.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>“Significant here, not there.”</h3>
+        <p>Significant for 18–34 and not for 35+ is not evidence that the two differ. That needs the interval of the difference between their lifts. <strong>Heavily overlapping intervals rarely support a difference.</strong></p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/warning.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
+        <h3>Slicing until something shows.</h3>
+        <p>Every cut is another draw. Ten columns of five levels is fifty segments, and at the 95% level <strong>two or three will look significant</strong> when no segment differs at all.</p>
+      </div>
+    </div>
+
+    <h3 class="subhead" data-reveal style="margin-top:clamp(56px,7vw,96px)">Doing it properly</h3>
+    <ol class="steps">
+      <li data-reveal><div><h3>Name the segments before you look.</h3><p>A handful, each with a reason the ad should work differently there. Put them in <code>subgroup_columns</code> before the outcomes are in view.</p></div></li>
+      <li data-reveal><div><h3>Use columns fixed before the flight that you can buy against.</h3><p>Demographics, region, long-run media habits, category purchases dated before the campaign.</p></div></li>
+      <li data-reveal><div><h3>Read counts and intervals with every lift.</h3><p>The package skips levels with fewer than 10 respondents in either group. That is a floor, not a target. <strong>An interval wider than the lift itself means the segment is unread.</strong></p></div></li>
+      <li data-reveal><div><h3>Discount the winner.</h3><p>Expect the top segment to land closer to the overall lift next time. A segment that beats the overall estimate by less than its own interval width is not shown to be different.</p></div></li>
+      <li data-reveal><div><h3>Confirm with a holdout before scaling.</h3><p>Run the targeted flight with a randomised control group inside the new audience. That measures the lift you are buying, without any of the assumptions on this page.</p></div></li>
+    </ol>
+
+    <figure class="code" data-reveal style="margin-top:clamp(36px,5vw,64px)"><pre data-lang="python"><code>r = run_analysis(df, cfg.model_copy(update={
+    "subgroup_columns": ["age_band", "region"],   # named in advance, fixed before the flight
+    "methods": ["ipw"],
+}))
+m = r.methods[0]
+overall = next(c for c in m.contrasts if c.outcome == "aided_awareness")
+print(f"overall lift {overall.lift:+.3f} [{overall.ci_low:+.3f}, {overall.ci_high:+.3f}]")
+for s in m.subgroups:
+    if s.outcome != "aided_awareness":
+        continue
+    unread = (s.ci_high - s.ci_low) > abs(s.lift)
+    print(f"{s.subgroup_column}={s.subgroup_level:10} n={s.n_exposed}/{s.n_control} "
+          f"lift {s.lift:+.3f} [{s.ci_low:+.3f}, {s.ci_high:+.3f}]" + ("  unread" if unread else ""))</code></pre></figure>
+  </div>
+</section>
+
 </main>
 <footer id="footer"></footer>
+<script type="module" src="assets/js/labs.js"></script>
 <script>
 (function () {
   var buttons = document.querySelectorAll("#case-filter .chip");

@@ -10,7 +10,7 @@ const el = (root, name) => root.querySelector(`[data-el="${name}"]`);
 const signed = (v, d = 2) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(d);
 const clip = (p, lo = 0.02, hi = 0.98) => Float64Array.from(p, (v) => Math.min(hi, Math.max(lo, v)));
 
-const LABS = { dag: dagLab, hidden: hiddenLab, overlap: overlapLab, methods: methodsLab, builder: builderLab };
+const LABS = { dag: dagLab, hidden: hiddenLab, overlap: overlapLab, methods: methodsLab, builder: builderLab, targeting: targetingLab };
 document.querySelectorAll("[data-lab]").forEach((root) => {
   const init = LABS[root.getAttribute("data-lab")];
   if (init) whenVisible(root, () => init(root), "200px 0px");
@@ -415,5 +415,85 @@ function builderLab(root) {
     pre.dataset.raw = code;
   }
   root.querySelectorAll("input[type=radio]").forEach((r) => r.addEventListener("change", update));
+  update();
+}
+
+// ================================================================ targeting
+// Winner's curse: rank segments by estimated lift and the top one overstates its true lift.
+function targetingLab(root) {
+  const BASE = 0.35, LIFT = 0.04, K = 12, SIMS = 2000;
+  const SEGMENTS = ["18–24 · urban", "18–24 · rural", "25–34 · urban", "25–34 · rural", "35–44 · urban", "35–44 · rural",
+    "45–54 · urban", "45–54 · rural", "55+ · urban", "55+ · rural", "Heavy streamers", "Light streamers"];
+  const SPREADS = [0, 0.01, 0.02, 0.035];
+  const SPREAD_LABELS = ["not at all", "a little", "moderately", "a lot"];
+  const shape = makeRng(7);
+  const z = Array.from({ length: K }, () => shape.n());
+  const zMean = mean(z), zSd = sd(z);
+  const zStd = z.map((v) => (v - zMean) / zSd); // so the true average lift stays exactly +4 points
+  const nIn = el(root, "n"), spreadIn = el(root, "spread"), rerun = el(root, "rerun");
+  const chart = estimateRows(el(root, "rows"), { labelWidth: 150, rowH: 42, label: "Estimated lift by segment" });
+  const pts = (v) => (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(1);
+  let seed = 1;
+
+  const update = onFrame(() => {
+    const n = Number(nIn.value), spread = SPREADS[Number(spreadIn.value)];
+    el(root, "n-out").textContent = n;
+    el(root, "spread-out").textContent = SPREAD_LABELS[Number(spreadIn.value)];
+    const truth = zStd.map((v) => LIFT + spread * v);
+    const se = truth.map((l) => Math.sqrt((BASE + l) * (1 - BASE - l) / n + BASE * (1 - BASE) / n));
+    const best = truth.indexOf(Math.max(...truth));
+
+    const rng = makeRng(seed);
+    const est = truth.map((l, k) => l + se[k] * rng.n());
+    const pick = est.indexOf(Math.max(...est));
+    const order = d3.range(K).sort((a, b) => est[b] - est[a]);
+    chart.set({
+      rows: order.map((k) => ({
+        key: SEGMENTS[k], label: SEGMENTS[k], note: `true ${pts(truth[k])}`,
+        value: est[k], lo: est[k] - 1.96 * se[k], hi: est[k] + 1.96 * se[k],
+        color: k === pick ? "var(--exposed)" : "var(--ink)",
+        tip: `true lift ${pts(truth[k])} points`,
+      })),
+      truth: LIFT, truthLabel: "True average", domain: [-0.2, 0.32], zero: true,
+      fmt: pts, tickFmt: (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.round(Math.abs(v) * 100),
+      xTitle: "Lift in aided awareness (percentage points)",
+    });
+
+    // Monte Carlo over many surveys with the same segments and sample sizes.
+    const mc = makeRng(1000 + n + 7 * Number(spreadIn.value));
+    let over = 0, right = 0;
+    for (let s = 0; s < SIMS; s++) {
+      let top = 0, topVal = -Infinity;
+      for (let k = 0; k < K; k++) {
+        const v = truth[k] + se[k] * mc.n();
+        if (v > topVal) { topVal = v; top = k; }
+      }
+      over += topVal - truth[top];
+      if (top === best) right++;
+    }
+    over /= SIMS;
+    const share = right / SIMS;
+
+    countTo(el(root, "pick-est"), est[pick] * 100, (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1));
+    countTo(el(root, "pick-true"), truth[pick] * 100, (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1));
+    countTo(el(root, "over"), over * 100, (v) => "+" + v.toFixed(1));
+    // With identical true lifts there is no best segment to find.
+    if (spread === 0) el(root, "right").textContent = "–";
+    else countTo(el(root, "right"), share * 100, (v) => v.toFixed(0) + "%");
+    el(root, "pick-est").parentNode.setAttribute("data-tone", est[pick] - truth[pick] > 0.02 ? "bad" : "");
+    el(root, "over").parentNode.setAttribute("data-tone", over > 0.02 ? "bad" : "good");
+
+    const v = el(root, "verdict");
+    if (spread === 0) {
+      setVerdict(v, "bad", "The winner is the luckiest sample.",
+        `Every segment has the same true lift, so whichever one tops the list got there by chance. On average the top segment overstates its lift by ${(over * 100).toFixed(1)} points, and buying it would return the same +4 as everyone else.`);
+    } else {
+      setVerdict(v, "bad", "Real differences, still a biased pick.",
+        `The segments do differ, but the ranking picks the truly best one in only ${(share * 100).toFixed(0)}% of surveys, and the pick overstates its lift by ${(over * 100).toFixed(1)} points on average. Plan on the shrunken number, then test it.`);
+    }
+  });
+  nIn.addEventListener("input", update);
+  spreadIn.addEventListener("input", update);
+  rerun.addEventListener("click", () => { seed += 1; update(); });
   update();
 }
