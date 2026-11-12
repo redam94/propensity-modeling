@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Methods | propensity_lift</title>
+<meta name="description" content="How propensity_lift estimates the propensity score and uses it: nearest-neighbour matching, inverse probability weighting, overlap weights, stratification and doubly robust AIPW, with balance diagnostics and bootstrap intervals.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header id="nav"></header>
+<script src="assets/js/site.js"></script>
+
+<main id="main">
+
+<section class="band" id="intro">
+  <div class="wrap center">
+    <p class="kicker" data-reveal>Methods</p>
+    <h1 class="display" data-reveal>Five ways to use one score.</h1>
+    <p class="lead" data-reveal>Every method here starts from the same propensity scores and builds a comparison group from them. They differ in <strong>who ends up in the comparison</strong>, so they can differ in which question they answer.</p>
+  </div>
+</section>
+
+<section class="band band--alt" id="score">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>The score is a summary, not a prediction.</h2>
+      <p class="lead" data-reveal>The propensity score is the probability of being exposed given the covariates. Its useful property: <strong>among respondents with the same score, the measured covariates are balanced</strong> between exposed and control. So you can compare on one number where you would otherwise need to match on dozens.</p>
+    </div>
+    <div class="tiles">
+      <div class="tile tile--third" data-reveal>
+        <h3>Three model types.</h3>
+        <p><code>logistic</code> (the default) is L2-regularised on standardised inputs. <code>gradient_boosting</code> and <code>random_forest</code> are there for exposure rules a linear model cannot follow.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <h3>Tree scores are out of sample.</h3>
+        <p>Boosting uses 5-fold cross-fitting and the forest uses out-of-bag predictions. In-sample tree scores are over-confident and make the groups look more separated than they are.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <h3>Features are prepared for you.</h3>
+        <p>Categoricals are one-hot encoded with levels under 1% pooled. Numeric gaps are median-imputed with a missing-indicator column, so missingness itself gets balanced.</p>
+      </div>
+    </div>
+    <div class="wrap--narrow section-gap" style="margin-left:auto;margin-right:auto">
+      <div class="callout" data-reveal>
+        <b>Judge the model by balance.</b>
+        <p>Pick the model type that leaves covariates balanced with a reasonable effective sample size. A flexible model that pushes scores to 0 and 1 has fitted exposure better and made the comparison worse.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="estimands" data-title="Estimands: ATT, ATE and ATO">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>Methods disagree when they answer for different people.</h2>
+      <p class="lead" data-reveal>In this simulation the campaign works better on people who were likelier to see it. So the effect on <strong>the exposed (ATT)</strong>, on <strong>everyone (ATE)</strong> and on <strong>the overlap population (ATO)</strong> are three different true numbers. Switch methods and watch which one each lands on.</p>
+    </div>
+    <div class="lab" data-lab="methods" data-reveal>
+      <div class="control" style="margin-bottom:26px">
+        <div class="seg" role="radiogroup" aria-label="Adjustment method">
+          <label><input type="radio" name="method" value="none"><span>No adjustment</span></label>
+          <label><input type="radio" name="method" value="match"><span>Matching</span></label>
+          <label><input type="radio" name="method" value="att" checked><span>IPW, ATT</span></label>
+          <label><input type="radio" name="method" value="ate"><span>IPW, ATE</span></label>
+          <label><input type="radio" name="method" value="overlap"><span>Overlap weights</span></label>
+          <label><input type="radio" name="method" value="strata"><span>Stratification</span></label>
+        </div>
+      </div>
+      <div class="lab-grid">
+        <div>
+          <p class="lab-title">Who is being compared</p>
+          <p class="lab-note">Bars show each group after adjustment. The dashed outline is the same group before.</p>
+          <div data-el="hist"></div>
+          <p class="lab-title" style="margin-top:22px">What the estimate lands on</p>
+          <div data-el="estimates"></div>
+        </div>
+        <div class="lab-side">
+          <div data-el="curve-wrap">
+            <p class="lab-title">Weight by score</p>
+            <div data-el="curve"></div>
+            <ul class="legend" aria-hidden="true">
+              <li><i class="is-line" style="--c:var(--exposed);border-top-style:solid"></i>exposed</li>
+              <li><i class="is-line" style="--c:var(--control);border-top-style:solid"></i>control</li>
+            </ul>
+          </div>
+          <p class="lab-note" data-el="curve-none" hidden>This method does not weight by a smooth function of the score. Each control's weight depends on how many exposed respondents it stands in for.</p>
+          <div class="readouts">
+            <div class="readout"><b data-el="ess-c">0</b><span>effective controls</span></div>
+            <div class="readout"><b data-el="ess-e">0</b><span>effective exposed</span></div>
+            <div class="readout"><b data-el="max-w">0</b><span>largest control weight, relative to average</span></div>
+            <div class="readout"><b data-el="smd">0</b><span>imbalance left on the covariate</span></div>
+          </div>
+          <div class="lab-verdict" data-el="verdict" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+    <div class="center section-gap">
+      <p class="lead" data-reveal>When your methods disagree on real data, check this first. <strong>A gap between IPW and overlap weights often means the effect varies across people</strong>, and the two are reporting on different people.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band band--alt" id="methods-reference" data-title="The five methods">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>The five methods, one at a time.</h2>
+      <p class="lead" data-reveal>Set any combination in <code>methods</code>. They run on the same scores and report in the same shape, so results line up row for row.</p>
+    </div>
+    <div class="cases">
+
+      <article class="case" id="nn_matching" data-reveal>
+        <div class="case-grid">
+          <div>
+            <h2>Nearest-neighbour matching</h2>
+            <dl>
+              <dt>How it works</dt>
+              <dd>Each exposed respondent is paired with the closest controls on the logit of the score. A control further away than the caliper is not used. Matching is exact within strata formed by the <code>matching_features</code>.</dd>
+              <dt>Answers for</dt>
+              <dd>The matched exposed respondents (ATT). With <code>estimand="ATE"</code> it matches in both directions.</dd>
+              <dt>Watch</dt>
+              <dd>Exposed respondents with no control inside the caliper are dropped and a warning says how many. The estimate then describes the matched exposed only.</dd>
+            </dl>
+          </div>
+          <div class="table-wrap" style="margin:0;background:var(--bg)">
+            <table>
+              <thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td><code>caliper</code></td><td>0.2</td><td>Maximum distance, in standard deviations of the logit score. <code>None</code> turns it off.</td></tr>
+                <tr><td><code>match_ratio</code></td><td>1</td><td>Controls per exposed respondent, 1 to 10.</td></tr>
+                <tr><td><code>replacement</code></td><td>True</td><td>Whether a control can be matched more than once.</td></tr>
+                <tr><td><code>matching_features</code></td><td>[]</td><td>Columns to match exactly on. Numeric columns with more than 10 values are cut into quintiles.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <article class="case" id="ipw" data-reveal>
+        <div class="case-grid">
+          <div>
+            <h2>Inverse probability weighting</h2>
+            <dl>
+              <dt>How it works</dt>
+              <dd>Everyone stays in the sample and is reweighted. For the ATT, exposed respondents get weight 1 and controls get e / (1 − e). For the ATE, the weights are 1 / e and 1 / (1 − e). Weights are normalised within each group.</dd>
+              <dt>Answers for</dt>
+              <dd>The exposed (ATT) or everyone (ATE), as configured.</dd>
+              <dt>Watch</dt>
+              <dd>Scores near 0 or 1 produce very large weights. Check the effective sample size and the largest weight before trusting the interval.</dd>
+            </dl>
+          </div>
+          <div class="table-wrap" style="margin:0;background:var(--bg)">
+            <table>
+              <thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td><code>estimand</code></td><td>"ATT"</td><td><code>"ATT"</code> or <code>"ATE"</code>.</td></tr>
+                <tr><td><code>weight_clip</code></td><td>None</td><td>Cap weights at this quantile within each group, for example 0.99. Off by default, because clipping trades variance for bias. The run warns when clipping moves an estimate by more than a quarter of a standard error.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <article class="case" id="overlap_weights" data-reveal>
+        <div class="case-grid">
+          <div>
+            <h2>Overlap weights</h2>
+            <dl>
+              <dt>How it works</dt>
+              <dd>Exposed respondents get weight 1 − e and controls get e. Weights are bounded between 0 and 1 and are largest where the groups mix.</dd>
+              <dt>Answers for</dt>
+              <dd>The overlap population (ATO): people who could plausibly have been in either group. The result is filed under the configured estimand with a warning that the target is the ATO.</dd>
+              <dt>Watch</dt>
+              <dd>Balance is close to exact with a logistic score, which looks excellent. The population has changed, though. Say so when you report the number.</dd>
+            </dl>
+          </div>
+          <div class="table-wrap" style="margin:0;background:var(--bg)">
+            <table>
+              <thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td colspan="3">No options of its own. Clipping does not apply, because the weights cannot blow up.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <article class="case" id="stratification" data-reveal>
+        <div class="case-grid">
+          <div>
+            <h2>Stratification</h2>
+            <dl>
+              <dt>How it works</dt>
+              <dd>Respondents are grouped into bands of the score. For the ATT the bands are quantiles of the exposed group's scores. Controls are reweighted within each band to match the exposed share.</dd>
+              <dt>Answers for</dt>
+              <dd>The exposed (ATT) or everyone (ATE), as configured.</dd>
+              <dt>Watch</dt>
+              <dd>Within a band the groups can still differ, so some imbalance usually survives. More strata reduce it and leave fewer controls per band.</dd>
+            </dl>
+          </div>
+          <div class="table-wrap" style="margin:0;background:var(--bg)">
+            <table>
+              <thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td><code>n_strata</code></td><td>5</td><td>Number of score bands, 2 to 20.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <article class="case" id="aipw" data-reveal>
+        <div class="case-grid">
+          <div>
+            <h2>Doubly robust AIPW</h2>
+            <dl>
+              <dt>How it works</dt>
+              <dd>An outcome model predicts each KPI from the model features, and the IPW weights then correct that model's residuals. Binary KPIs use a ridge logistic regression and scales use least squares, whatever <code>model_type</code> the propensity model uses.</dd>
+              <dt>Answers for</dt>
+              <dd>The same population as <code>ipw</code>. For the ATT, only the control outcome model is fitted.</dd>
+              <dt>Watch</dt>
+              <dd>The estimate stays consistent if either the propensity model or the outcome model is right. Both use the same covariates, so <strong>it gives no protection against a missing confounder.</strong></dd>
+            </dl>
+          </div>
+          <div class="table-wrap" style="margin:0;background:var(--bg)">
+            <table>
+              <thead><tr><th>Option</th><th>Default</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td><code>estimand</code></td><td>"ATT"</td><td>Same as <code>ipw</code>.</td></tr>
+                <tr><td><code>weight_clip</code></td><td>None</td><td>Same weights and clipping as <code>ipw</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<section class="band" id="choosing">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>Which to run.</h2>
+      <p class="lead" data-reveal>Run more than one and report them together. Use this table to decide which to lead with.</p>
+    </div>
+    <div class="table-wrap section-gap" data-reveal>
+      <table>
+        <thead><tr><th>Your situation</th><th>Lead with</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Standard brand lift, reasonable overlap</td><td><code>ipw</code> and <code>aipw</code></td><td>They keep every respondent and target the ATT directly. AIPW is usually the more precise of the two.</td></tr>
+          <tr><td>The sample was quota-matched on demographics</td><td><code>nn_matching</code> with <code>matching_features</code></td><td>Exact matching within the quota cells respects the design, with the score handling everything else.</td></tr>
+          <tr><td>Thin overlap, a few very large weights</td><td><code>overlap_weights</code>, or <code>trim</code></td><td>Stable estimates for the comparable population. State that the population changed.</td></tr>
+          <tr><td>A small control group</td><td><code>ipw</code> or <code>overlap_weights</code></td><td>Matching reuses the same few controls and discards the rest.</td></tr>
+          <tr><td>You need the effect for the whole audience</td><td><code>ipw</code> and <code>aipw</code> with <code>estimand="ATE"</code></td><td>Requires overlap in both directions, so check the low-score exposed respondents too.</td></tr>
+          <tr><td>You doubt the propensity model's functional form</td><td><code>aipw</code>, and try <code>gradient_boosting</code></td><td>The outcome model gives a second chance at getting the adjustment right.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="band band--alt" id="trimming">
+  <div class="wrap wrap--narrow">
+    <h2 class="headline headline--s" data-reveal>Trimming</h2>
+    <div class="prose" data-reveal>
+      <p>Trimming removes respondents from the analysis before any method runs. Set it with <code>trim</code>.</p>
+    </div>
+    <div class="table-wrap" data-reveal>
+      <table>
+        <thead><tr><th>Rule</th><th>Keeps</th><th>Use when</th></tr></thead>
+        <tbody>
+          <tr><td><code>"none"</code></td><td>Everyone. The default.</td><td>Overlap is good, or the method handles thin regions itself.</td></tr>
+          <tr><td><code>"common_support"</code></td><td>Scores inside the range both groups share.</td><td>A few respondents sit outside the other group's range.</td></tr>
+          <tr><td><code>"crump"</code></td><td>Scores from 0.1 to 0.9.</td><td>Weights are unstable at the extremes.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout--bias" data-reveal>
+      <b>Trimming exposed respondents changes the question.</b>
+      <p>Dropping controls who resemble no one exposed costs an ATT nothing. Dropping exposed respondents means the answer no longer covers everyone the campaign reached. The counts are in <code>result.overlap.n_trimmed_exposed</code> and <code>n_trimmed_control</code>; report them with the lift.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="balance" data-title="Balance diagnostics">
+  <div class="wrap wrap--narrow">
+    <h2 class="headline headline--s" data-reveal>Balance</h2>
+    <div class="prose" data-reveal>
+      <p>After adjustment, every covariate should have about the same distribution in both groups. The measure is the <strong>standardised mean difference</strong>: the gap between the exposed and control means, divided by a pooled standard deviation.</p>
+      <p>The package divides by the pooled standard deviation from <em>before</em> adjustment in both the before and after columns. That keeps the two comparable: a weighting scheme cannot make balance look better just by inflating the variance.</p>
+      <ul>
+        <li><strong>|SMD| above 0.1</strong> is flagged as imbalanced. <code>balance_summary.n_imbalanced_after</code> counts them.</li>
+        <li><strong>Variance ratios</strong> are reported for numeric covariates. Between 0.5 and 2 is acceptable.</li>
+        <li>Matching features always appear in the balance table, whether or not they are in the model.</li>
+        <li>There are no p-values. Balance is a property of this sample, and a significance test would mostly measure sample size.</li>
+      </ul>
+    </div>
+    <figure class="code" data-reveal>
+      <pre data-lang="python"><code>for m in result.methods:
+    s = m.balance_summary
+    print(m.label, s.max_abs_smd_before, "->", s.max_abs_smd_after, "imbalanced:", s.n_imbalanced_after)
+    worst = max(m.balance, key=lambda row: abs(row.smd_after))
+    print("  worst:", worst.variable, round(worst.smd_after, 3))</code></pre>
+    </figure>
+    <p class="actions" data-reveal><a class="more" href="walkthrough.html#balance">See a real balance plot</a></p>
+  </div>
+</section>
+
+<section class="band band--alt" id="uncertainty" data-title="Uncertainty: bootstrap and analytic standard errors">
+  <div class="wrap wrap--narrow">
+    <h2 class="headline headline--s" data-reveal>Uncertainty</h2>
+    <div class="prose" data-reveal>
+      <p>With <code>n_bootstrap</code> above zero (the default is 200), respondents are resampled within each group and the adjustment is redone on every resample: the trim rule is reapplied, and the matching or weights are rebuilt. The interval is the lift plus or minus a normal quantile times the bootstrap standard error, and the p-value uses the same standard error, so the interval, the p-value and the <code>significant</code> flag always agree.</p>
+      <ul>
+        <li>For weighting methods with a <strong>logistic</strong> model, the propensity model is refitted in every replicate, so the interval includes the uncertainty in the scores.</li>
+        <li>For <strong>gradient boosting and random forest</strong>, refitting is too slow, so the scores are held fixed and the run adds a warning.</li>
+        <li>For <strong>matching</strong>, the plain bootstrap is an approximation. Treat borderline results from matching with extra caution.</li>
+        <li>For <strong>AIPW</strong>, the outcome models are refitted in every replicate.</li>
+        <li>With <code>n_bootstrap=0</code>, analytic standard errors are used and a warning notes that they ignore the estimation of the scores.</li>
+      </ul>
+      <p>Each contrast records which was used in <code>ci_method</code>.</p>
+    </div>
+    <div class="callout" data-reveal>
+      <b>Six KPIs and five methods is thirty tests.</b>
+      <p>At a 5% threshold, one or two will cross it by chance. In the bundled sample data, a KPI with no true effect comes out “significant” under matching. Name a primary KPI and method beforehand, and read the rest as supporting evidence.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="contrasts" data-title="Reading a contrast">
+  <div class="wrap wrap--narrow">
+    <h2 class="headline headline--s" data-reveal>Reading a contrast</h2>
+    <div class="prose" data-reveal>
+      <p>Each method returns one <code>OutcomeContrast</code> per KPI.</p>
+    </div>
+    <div class="table-wrap" data-reveal>
+      <table>
+        <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>exposed_mean</code></td><td>The exposed group's mean. A proportion from 0 to 1 for binary KPIs.</td></tr>
+          <tr><td><code>control_mean_adjusted</code></td><td>The control mean after matching or weighting. This is the estimate of what the exposed group would have scored without the campaign.</td></tr>
+          <tr><td><code>lift</code></td><td>Exposed minus adjusted control. Multiply by 100 for percentage points on a binary KPI.</td></tr>
+          <tr><td><code>relative_lift</code></td><td>Lift as a percentage of the adjusted control mean.</td></tr>
+          <tr><td><code>raw_diff</code></td><td>Exposed minus unadjusted control. The gap between this and <code>lift</code> is what adjustment removed.</td></tr>
+          <tr><td><code>ci_low</code>, <code>ci_high</code>, <code>p_value</code>, <code>significant</code></td><td>Interval and test for the absolute lift at the configured <code>alpha</code>.</td></tr>
+          <tr><td><code>effective_n_control</code></td><td>How many equally weighted controls the adjusted control group is worth. A small number means a few respondents carry the estimate.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="actions" data-reveal>
+      <a class="more" href="api.html#OutcomeContrast">Every field</a>
+      <a class="more" href="walkthrough.html#lift">Read real results</a>
+    </p>
+  </div>
+</section>
+
+<section class="band band--alt" id="reading">
+  <div class="wrap wrap--narrow">
+    <h2 class="headline headline--s" data-reveal>Background reading</h2>
+    <ul class="sources" data-reveal>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Identification-Strategies/Propensity-Score-Matching/Propensity-Score-Matching---Overview"><b>Propensity score matching: overview</b><span>Define closeness, match, assess balance, then analyse the outcome.</span><i>Propensity score matching</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Identification-Strategies/Propensity-Score-Matching/Matching-Methods-and-Distance-Measures"><b>Matching methods and distance measures</b><span>Matching, subclassification and the weighting formulas for ATE and ATT.</span><i>Propensity score matching</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Identification-Strategies/Propensity-Score-Matching/Matching-Algorithms-and-Caliper"><b>Matching algorithms and the caliper</b><span>Where the 0.2 and 0.25 standard deviation calipers come from.</span><i>Propensity score matching</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Identification-Strategies/Propensity-Score-Matching/Covariate-Balance-and-Matching-Diagnostics"><b>Covariate balance and matching diagnostics</b><span>Standardised differences, love plots, effective sample size and outcome blinding.</span><i>Propensity score matching</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Bayesian-Statistics/Causal-Inference/Foundations/Frequentist-Causal-Estimation"><b>Frequentist causal estimation</b><span>IPW, Hájek and doubly robust estimators side by side.</span><i>Causal inference</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Causal-Machine-Learning/Neyman-Orthogonality"><b>Neyman orthogonality</b><span>Why doubly robust scores tolerate imperfect nuisance models.</span><i>Causal machine learning</i></a></li>
+    </ul>
+    <div class="actions" data-reveal>
+      <a class="btn" href="walkthrough.html">Next: the walkthrough</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer id="footer"></footer>
+<script type="module" src="assets/js/labs.js"></script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>propensity_lift: propensity modeling for brand lift, framed first</title>
+<meta name="description" content="A guide to propensity score analysis for analysts: how to frame the question, what identification requires, and how to run it with the propensity_lift Python package.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header id="nav"></header>
+<script src="assets/js/site.js"></script>
+
+<main id="main">
+
+<section class="story band--dark" id="story" data-story data-stage="0" data-title="From a raw difference to an adjusted one">
+  <div class="story-stage">
+    <canvas class="story-canvas" aria-hidden="true"></canvas>
+    <div class="story-captions">
+      <div class="story-caption is-active">
+        <h1>Frame first. Then model.</h1>
+        <p><strong>propensity_lift</strong> estimates brand lift from exposed-versus-control survey data. This guide covers the package, and the decisions that have to be made before you run it.</p>
+      </div>
+      <div class="story-caption" aria-hidden="true">
+        <h2>Start with the comparison everyone makes.</h2>
+        <p>In this simulated survey, exposed respondents are more aware of the brand than controls by <strong><span data-bind="raw">+19</span> points</strong>. It is tempting to call that lift.</p>
+      </div>
+      <div class="story-caption" aria-hidden="true">
+        <h2>The groups were never alike.</h2>
+        <p>Heavy media users were likelier to see the ad, and likelier to know the brand already. <strong>Part of the gap existed before the campaign ran.</strong></p>
+      </div>
+      <div class="story-caption" aria-hidden="true">
+        <h2>A propensity score puts everyone on one axis.</h2>
+        <p>It is each respondent's estimated chance of exposure, given what you measured. <strong>Where both colours appear, a like-for-like comparison exists.</strong></p>
+      </div>
+      <div class="story-caption" aria-hidden="true">
+        <h2>Reweight controls to resemble the exposed.</h2>
+        <p>Controls who look like exposed respondents now count for more. The gap falls from <span data-bind="raw">+19</span> to <strong><span data-bind="adjusted">+8</span> points</strong>. The other <span data-bind="confounding">11</span> were confounding.</p>
+      </div>
+      <div class="story-caption" aria-hidden="true">
+        <h2>That was the easy part.</h2>
+        <p>It worked because the simulation's only confounder was in the model. <strong>With real data you have to argue that, and nothing in the output can confirm it.</strong></p>
+      </div>
+    </div>
+    <div class="story-readout" data-nosearch>
+      <div class="story-metric" data-from="1"><b data-bind="raw">+19</b><span>raw difference, points</span></div>
+      <div class="story-metric" data-from="4"><b data-bind="adjusted">+8</b><span>after reweighting</span></div>
+      <div class="story-metric" data-from="4"><b data-bind="truth">+8</b><span>true effect, known only because this is simulated</span></div>
+    </div>
+    <div class="story-hint" aria-hidden="true">Scroll to follow one simulated survey</div>
+    <div class="story-progress" aria-hidden="true"><i class="is-active"></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <div class="story-step"></div><div class="story-step"></div><div class="story-step"></div>
+  <div class="story-step"></div><div class="story-step"></div><div class="story-step"></div>
+</section>
+
+<section class="band" id="premise">
+  <div class="wrap center">
+    <h2 class="headline" data-reveal>A propensity model does not know what question you asked.</h2>
+    <p class="lead" data-reveal>If you build response or targeting models, the mechanics here are familiar: a classifier, a score, some weights. <strong>What changes is the job.</strong> A targeting model succeeds by predicting exposure well. A propensity analysis succeeds when the comparison it sets up is fair, and <strong>a model that predicts exposure too well is a sign that no fair comparison exists.</strong></p>
+    <div class="actions" data-reveal>
+      <a class="btn" href="framing.html">Frame the question</a>
+      <a class="more" href="walkthrough.html">Go straight to the walkthrough</a>
+    </div>
+  </div>
+</section>
+
+<section class="band band--alt" id="requirements">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>Three things the output cannot tell you.</h2>
+      <p class="lead" data-reveal>The package reports balance, overlap and confidence intervals. All three can look excellent while the answer is wrong, because each of these is settled outside the data.</p>
+    </div>
+    <div class="tiles">
+      <a class="tile tile--third" href="identification.html#unconfoundedness" data-reveal>
+        <h3>You measured why people were exposed.</h3>
+        <p>Every cause of exposure that also moves the outcome is in the model. This is <strong>unconfoundedness</strong>, and it cannot be tested.</p>
+        <span class="more">No unmeasured confounding</span>
+      </a>
+      <a class="tile tile--third" href="identification.html#overlap" data-reveal>
+        <h3>Comparable people exist.</h3>
+        <p>For every kind of exposed respondent there are controls like them. This is <strong>overlap</strong>, and the package can show you where it fails.</p>
+        <span class="more">Overlap and positivity</span>
+      </a>
+      <a class="tile tile--third" href="identification.html#consistency" data-reveal>
+        <h3>“Exposed” means one thing.</h3>
+        <p>One well-defined exposure, with no spillover from one respondent to another. This is <strong>consistency</strong>, and it is decided when you code the flag.</p>
+        <span class="more">A well-defined exposure</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="band band--dark" id="evidence">
+  <div class="wrap">
+    <h2 class="headline" data-reveal>When observational ad measurement was checked against experiments, it missed badly.</h2>
+    <p class="lead" data-reveal>These studies had far richer data than a survey and still went wrong, because the variables that drove exposure were not in the data. <strong>The estimator was rarely the weak point.</strong></p>
+    <div class="figures">
+      <div data-reveal>
+        <div class="figure-num is-bias">160×</div>
+        <p class="figure-label"><strong>Lewis, Rao and Reiley (2011).</strong> A randomised test measured a 5.4% effect on brand searches. Regression with every available control said 872%.</p>
+      </div>
+      <div data-reveal>
+        <div class="figure-num is-bias">7 of 14</div>
+        <p class="figure-label"><strong>Gordon et al. (2019).</strong> In seven of the 14 Facebook experiments with a checkout outcome, the observational estimates were off by more than a factor of three.</p>
+      </div>
+      <div data-reveal>
+        <div class="figure-num is-bias">173% vs 29%</div>
+        <p class="figure-label"><strong>Gordon, Moakler and Zettelmeyer (2023).</strong> Over 663 experiments, the median upper-funnel lift from stratified propensity score matching, against the median lift the experiments measured.</p>
+      </div>
+    </div>
+    <p class="actions" data-reveal>
+      <a class="more" href="https://redam94.github.io/second-brain/Research/Research-Methodology/Observational-vs-Experimental-Methods-in-Advertising">Read the case-study notes</a>
+      <a class="more" href="https://redam94.github.io/second-brain/Research/Market-Response-Models/User-Level-Ad-Experiments/Experimental-Benchmarks-for-Observational-Ad-Measurement">Experimental benchmarks</a>
+    </p>
+  </div>
+</section>
+
+<section class="band" id="package">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>One call runs the whole analysis.</h2>
+      <p class="lead" data-reveal>Give it a respondent-level table and a config. It fits the propensity model, checks overlap, applies every adjustment method you asked for, and reports lift for each KPI with <strong>diagnostics next to every number.</strong></p>
+    </div>
+    <figure class="code" data-reveal>
+      <pre data-lang="python"><code>from propensity_lift import AnalysisConfig, load_table, run_analysis
+
+df = load_table("survey.xlsx")
+cfg = AnalysisConfig(
+    dataset_id="survey",
+    treatment_column="group", exposed_values=["Exposed"], control_values=["Control"],
+    outcome_columns=["aided_awareness", "favorability", "consideration"],
+    model_features=["age", "social_media_hours_day", "prior_brand_usage"],
+    methods=["nn_matching", "ipw", "overlap_weights", "aipw"],
+    estimand="ATT",
+)
+result = run_analysis(df, cfg)</code></pre>
+    </figure>
+    <div class="tiles">
+      <a class="tile tile--7" href="methods.html" data-reveal>
+        <h3>Five estimators, side by side.</h3>
+        <p>Nearest-neighbour matching, inverse probability weighting, overlap weights, stratification and doubly robust AIPW run from one config. <strong>When they disagree, that is information.</strong></p>
+        <span class="more">How each method works</span>
+      </a>
+      <a class="tile tile--5" href="identification.html#overlap" data-reveal>
+        <h3>Overlap you can see.</h3>
+        <p>Common support, the overlap coefficient and feature-by-feature gaps, reported before any lift number.</p>
+        <span class="more">Reading overlap</span>
+      </a>
+      <a class="tile tile--5" href="methods.html#balance" data-reveal>
+        <h3>Balance, before and after.</h3>
+        <p>Standardised mean differences for every covariate, with the same denominator on both sides so the two are comparable.</p>
+        <span class="more">Balance diagnostics</span>
+      </a>
+      <a class="tile tile--7" href="methods.html#uncertainty" data-reveal>
+        <h3>Intervals that include the adjustment.</h3>
+        <p>The bootstrap redoes the matching or weighting on every resample, so the interval reflects the adjustment step and not only the final difference in means.</p>
+        <span class="more">Uncertainty</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="band band--alt" id="start">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>Pick where to start.</h2>
+    </div>
+    <div class="tiles">
+      <a class="tile tile--third" href="framing.html" data-reveal>
+        <h3>I build models, and causal questions are new to me.</h3>
+        <p>Start with the question: what you are estimating, for whom, and which variables may go in the model.</p>
+        <span class="more">Frame the question</span>
+      </a>
+      <a class="tile tile--third" href="walkthrough.html" data-reveal>
+        <h3>I want to run it on data now.</h3>
+        <p>An end-to-end run on the bundled sample survey, with every output explained as it appears.</p>
+        <span class="more">Walkthrough</span>
+      </a>
+      <a class="tile tile--third" href="api.html" data-reveal>
+        <h3>I need a field name.</h3>
+        <p>Every function, config option and result field, generated from the source.</p>
+        <span class="more">API reference</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer id="footer"></footer>
+<script type="module" src="assets/js/story.js"></script>
+</body>
+</html>

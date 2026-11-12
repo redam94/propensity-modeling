@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frame the question | propensity_lift</title>
+<meta name="description" content="What to decide before fitting a propensity model: the estimand, how exposure was assigned, and which variables may enter the model.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header id="nav"></header>
+<script src="assets/js/site.js"></script>
+
+<main id="main">
+
+<section class="band" id="intro">
+  <div class="wrap center">
+    <p class="kicker" data-reveal>Frame the question</p>
+    <h1 class="display" data-reveal>The model answers whatever you hand it.</h1>
+    <p class="lead" data-reveal>A propensity model will fit on any set of columns and return a lift number with a confidence interval. <strong>Whether that number means anything was decided earlier</strong>, by what you asked and what you let into the model.</p>
+  </div>
+</section>
+
+<section class="band band--alt" id="two-jobs">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>Same classifier. Different job.</h2>
+      <p class="lead" data-reveal>Most of the habits that make a good targeting model make a bad propensity analysis. The code looks the same, which is why the habits carry over unnoticed.</p>
+    </div>
+    <div class="versus" data-reveal>
+      <div class="versus-corner"></div>
+      <div class="versus-head">Targeting or response model</div>
+      <div class="versus-head">Propensity analysis</div>
+
+      <div class="versus-row">What it is for</div>
+      <div>Predict who will be exposed, click or buy.</div>
+      <div>Make exposed and control respondents comparable, so their difference can be read as an effect.</div>
+
+      <div class="versus-row">What good looks like</div>
+      <div>High AUC on a holdout set.</div>
+      <div>Balanced covariates and enough overlap. A high AUC is a warning that the groups barely overlap.</div>
+
+      <div class="versus-row">Which variables go in</div>
+      <div>Anything that improves the fit.</div>
+      <div>Only things fixed before exposure that cause both exposure and the outcome.</div>
+
+      <div class="versus-row">How you validate</div>
+      <div>Compare predictions with what happened.</div>
+      <div>You cannot. What exposed respondents would have said without exposure is never observed.</div>
+
+      <div class="versus-row">How it fails</div>
+      <div>Visibly: accuracy drops out of sample.</div>
+      <div>Silently: the estimate is biased and every diagnostic still looks clean.</div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="selection">
+  <div class="wrap center">
+    <h2 class="headline" data-reveal>A raw difference is two numbers added together.</h2>
+    <p class="lead" data-reveal>Exposed respondents differ from controls for two reasons. The campaign changed them, and <strong>they were different people to begin with</strong>. The raw gap cannot tell these apart.</p>
+    <div class="formula" data-reveal>
+      <div><b>Exposed − control</b><small>what the survey shows</small></div>
+      <span>=</span>
+      <div class="is-support"><b>Effect on the exposed</b><small>what the campaign did (the ATT)</small></div>
+      <span>+</span>
+      <div class="is-bias"><b>Selection bias</b><small>how the two groups would have differed with no campaign at all</small></div>
+    </div>
+    <p class="lead" data-reveal>Random assignment makes the second term zero by construction. Without it, <strong>adjustment can only remove the part of selection bias that runs through variables you measured.</strong></p>
+    <p class="actions" data-reveal><a class="more" href="https://redam94.github.io/second-brain/Research/Econometrics/Foundations/The-Selection-Problem">The selection problem, in full</a></p>
+  </div>
+</section>
+
+<section class="band band--alt" id="estimand">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>Say who the answer is about.</h2>
+      <p class="lead" data-reveal>“What was the lift?” is not yet a question. An estimand names <strong>a population, an exposure, a comparison and an outcome</strong>. Change any one and the right number changes, even with the same data.</p>
+    </div>
+    <div class="lab" data-lab="builder" data-reveal>
+      <div class="lab-grid lab-grid--even">
+        <div>
+          <div class="builder-q">
+            <span class="control-label">Whose outcomes are you asking about?</span>
+            <div class="seg">
+              <label><input type="radio" name="pop" value="ATT" checked><span>The people exposed</span></label>
+              <label><input type="radio" name="pop" value="ATE"><span>The whole audience</span></label>
+              <label><input type="radio" name="pop" value="ATO"><span>Those who could have gone either way</span></label>
+            </div>
+          </div>
+          <div class="builder-q">
+            <span class="control-label">What counts as exposed?</span>
+            <div class="seg">
+              <label><input type="radio" name="dose" value="any" checked><span>Any exposure</span></label>
+              <label><input type="radio" name="dose" value="freq"><span>Three or more</span></label>
+              <label><input type="radio" name="dose" value="view"><span>Completed view</span></label>
+            </div>
+          </div>
+          <div class="builder-q">
+            <span class="control-label">Which outcome?</span>
+            <div class="seg">
+              <label><input type="radio" name="out" value="aware" checked><span>Aided awareness</span></label>
+              <label><input type="radio" name="out" value="fav"><span>Favourability</span></label>
+              <label><input type="radio" name="out" value="intent"><span>Purchase intent</span></label>
+            </div>
+          </div>
+          <figure class="code output">
+            <div class="code-head"><span>The config this question implies</span></div>
+            <pre><code data-el="code"></code></pre>
+          </figure>
+        </div>
+        <div class="builder-out" aria-live="polite">
+          <p class="lab-note">Your question</p>
+          <p class="builder-sentence" data-el="sentence"></p>
+          <p class="builder-formula"><span data-el="formula"></span>, in <span data-el="unit"></span></p>
+          <p class="lab-note" style="margin-top:24px">What this commits you to</p>
+          <ul data-el="commit"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="center section-gap">
+      <p class="lead" data-reveal>Brand lift is almost always an <strong>ATT</strong> question: did the campaign move the people it reached? That is the package default. Pick something else on purpose, and before you see results.</p>
+      <p class="actions" data-reveal>
+        <a class="more" href="methods.html#estimands">How the estimands differ in practice</a>
+        <a class="more" href="https://redam94.github.io/second-brain/Research/Research-Methodology/Estimands-in-Longitudinal-Research">Define the estimand first</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="dag">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>A variable earns its place by where it sits, not by how well it predicts.</h2>
+      <p class="lead" data-reveal>Below is a small brand-lift world where the true effect is known. Choose what goes into the propensity model and watch the estimate. <strong>The set with the best AUC gives the worst answer.</strong></p>
+    </div>
+    <div class="lab" data-lab="dag" data-reveal>
+      <div class="lab-grid">
+        <div>
+          <div class="chart dag" data-el="dag"></div>
+          <ul class="legend" aria-hidden="true">
+            <li><i class="is-line" style="--c:var(--support)"></i>carries the campaign's effect</li>
+            <li><i class="is-line" style="--c:var(--bias)"></i>open path that is not the effect</li>
+            <li><i class="is-line" style="--c:var(--line)"></i>closed or harmless</li>
+          </ul>
+          <div data-el="estimates" style="margin-top:22px"></div>
+          <p class="lab-note">Each dot is the estimate from one simulated survey of 1,200 respondents, using inverse probability weights from a logistic model on the variables you chose. Scores are clipped to 0.02–0.98.</p>
+        </div>
+        <div class="lab-side">
+          <div class="control">
+            <span class="control-label">In your propensity model</span>
+            <div class="chips" data-el="chips" style="margin-top:10px"></div>
+            <small>Click a variable here or in the diagram.</small>
+          </div>
+          <div class="presets">
+            <button class="preset" type="button" data-preset="CZMK">Everything that predicts exposure</button>
+            <button class="preset" type="button" data-preset="C">Only the common cause</button>
+            <button class="preset" type="button" data-preset="">Clear</button>
+          </div>
+          <div class="readouts">
+            <div class="readout"><b data-el="auc">0.50</b><span>model AUC</span></div>
+            <div class="readout"><b data-el="bias">0</b><span>bias in the estimate</span></div>
+            <div class="readout"><b data-el="spread">0</b><span>spread across surveys</span></div>
+          </div>
+          <div class="lab-verdict" data-el="verdict" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band band--alt" id="variables">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>Four kinds of variable. Four different answers.</h2>
+    </div>
+    <div class="tiles">
+      <div class="tile" data-reveal>
+        <span class="rule-mark is-yes">Include</span>
+        <h3>Causes of both exposure and the outcome.</h3>
+        <p>Age, media habits, prior relationship with the brand, category involvement. These are the confounders, and the analysis exists to balance them. <strong>Be generous here:</strong> leaving one out biases the estimate, while including a weak one costs little.</p>
+      </div>
+      <div class="tile" data-reveal>
+        <span class="rule-mark is-yes">Include if you have it</span>
+        <h3>Causes of the outcome only.</h3>
+        <p>They do not predict exposure, so they barely change the scores. They still tighten the estimate, because they soak up outcome variation that would otherwise be noise.</p>
+      </div>
+      <div class="tile" data-reveal>
+        <span class="rule-mark is-maybe">Leave out</span>
+        <h3>Causes of exposure only.</h3>
+        <p>Targeting flags, ad-server quirks, which panel a respondent came from. They raise the AUC, thin out the overlap and widen the interval. <strong>If a confounder is still missing, they make its bias larger.</strong></p>
+      </div>
+      <div class="tile" data-reveal>
+        <span class="rule-mark is-no">Never</span>
+        <h3>Anything the exposure could have changed.</h3>
+        <p>Ad recall, site visits, post-campaign attitudes, anything measured after the first impression that the ad might have moved. Adjusting for it removes real effect or manufactures a false one.</p>
+      </div>
+    </div>
+    <div class="wrap--narrow section-gap" style="margin-left:auto;margin-right:auto">
+      <div class="callout callout--bias" data-reveal>
+        <b>The survey ran after the campaign.</b>
+        <p>Every answer in a post-campaign survey was given after exposure. “Prior brand usage” asked today is a memory, and seeing the ad can change what people remember. Treat a covariate as pre-exposure only when exposure could not plausibly have altered the answer: demographics, long-run media habits, purchases dated before the flight.</p>
+      </div>
+      <div class="callout" data-reveal>
+        <b>Do not read the model's feature importance as a finding.</b>
+        <p>The importance chart describes who got exposed. It says nothing about what drives awareness or intent, and the coefficients of adjustment variables are not effects of those variables. Epidemiologists call this the Table 2 fallacy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="forking">
+  <div class="wrap center">
+    <h2 class="headline" data-reveal>Decide before you look at lift.</h2>
+    <p class="lead" data-reveal>Choosing features, a caliper, a trimming rule and a method is design work, and it can all be done <strong>without opening the outcome columns</strong>. Tune those choices while watching the lift number and you are searching for a result. Five yes-or-no choices already make <strong>32 different analyses</strong>.</p>
+    <ol class="steps">
+      <li data-reveal><div><h3>Write the question down.</h3><p>Population, exposure, comparison, outcome. One sentence, agreed with whoever asked for the number.</p></div></li>
+      <li data-reveal><div><h3>Describe how people came to be exposed.</h3><p>Who decided who saw the ad: targeting rules, placements, the respondent's own media habits. <strong>This is the list your covariates have to cover.</strong></p></div></li>
+      <li data-reveal><div><h3>List the common causes, then check when each was fixed.</h3><p>For every driver of exposure, ask whether it also moves the outcome, whether you measured it, and whether exposure could have changed the answer.</p></div></li>
+      <li data-reveal><div><h3>Name what you could not measure.</h3><p>There is always something. Writing it down tells readers which direction the estimate is likely to be wrong in.</p></div></li>
+      <li data-reveal><div><h3>Fix the estimand, the methods, the trimming rule and the primary KPI.</h3><p>Run several methods and report all of them. Agreement between methods is reassuring; picking the best-looking one is not.</p></div></li>
+      <li data-reveal><div><h3>Check overlap and balance. Then open the lift results.</h3><p>If the design fails those checks, change the design. Do it before the outcomes are in view.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section class="band band--alt" id="reading">
+  <div class="wrap wrap--narrow">
+    <h2 class="headline headline--s" data-reveal>Background reading</h2>
+    <p class="lead" data-reveal style="font-size:19px">The ideas on this page are developed in the Second Brain knowledge base. These notes are the closest sources.</p>
+    <ul class="sources" data-reveal>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Foundations/The-Selection-Problem"><b>The selection problem</b><span>Why a naive difference equals the effect on the treated plus selection bias.</span><i>Econometrics</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Research-Methodology/Estimands-in-Longitudinal-Research"><b>Estimands</b><span>Define the causal quantity before choosing a statistical model.</span><i>Research methodology</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Identification-Strategies/DAGs-and-Causal-Identification"><b>DAGs and causal identification</b><span>Forks, chains, colliders and the back-door criterion.</span><i>Econometrics</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Regression-Foundations/Conditional-Independence-Assumption"><b>Conditional independence assumption</b><span>Selection on observables, and why controls must be pre-treatment.</span><i>Econometrics</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Research-Methodology/Logic-of-Regression-Adjustment"><b>Logic of regression adjustment</b><span>The adjustment set as a deliberate choice, not a kitchen sink.</span><i>Research methodology</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Research-Methodology/Table-2-Fallacy"><b>Table 2 fallacy</b><span>Coefficients on adjustment variables are not effects.</span><i>Research methodology</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Research-Methodology/Garden-of-Forking-Paths"><b>Garden of forking paths</b><span>How data-dependent analysis choices inflate false positives without any fishing.</span><i>Research methodology</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Identification-Strategies/Propensity-Score-Matching/Propensity-Score-and-the-Balancing-Property"><b>The propensity score and the balancing property</b><span>Variable selection aims at balance, not at the c-statistic.</span><i>Econometrics</i></a></li>
+    </ul>
+    <div class="actions" data-reveal>
+      <a class="btn" href="identification.html">Next: identification</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer id="footer"></footer>
+<script type="module" src="assets/js/labs.js"></script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Identification | propensity_lift</title>
+<meta name="description" content="The three assumptions a propensity score analysis rests on: unconfoundedness, overlap and a well-defined exposure. What each means for brand-lift data and what the diagnostics can and cannot show.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header id="nav"></header>
+<script src="assets/js/site.js"></script>
+
+<main id="main">
+
+<section class="band" id="intro">
+  <div class="wrap center">
+    <p class="kicker" data-reveal>Identification</p>
+    <h1 class="display" data-reveal>What has to be true for the number to mean something.</h1>
+    <p class="lead" data-reveal>Identification is the argument that connects what you can compute to the effect you want. It rests on three assumptions. <strong>The data can speak to one of them.</strong> The other two you have to defend from what you know about the campaign.</p>
+  </div>
+</section>
+
+<section class="band band--alt" id="counterfactual">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>The quantity you want was never recorded.</h2>
+      <p class="lead" data-reveal>Every respondent has two possible answers: one if exposed, one if not. The survey records one of them. The effect is the difference between the two, so <strong>half of every comparison is missing.</strong></p>
+    </div>
+    <div class="table-wrap wrap--narrow" style="margin:clamp(32px,5vw,56px) auto 0" data-reveal>
+      <table>
+        <thead><tr><th>Respondent</th><th>Group</th><th class="num">Aware if exposed</th><th class="num">Aware if not exposed</th><th class="num">Effect</th></tr></thead>
+        <tbody>
+          <tr><td>A</td><td style="color:var(--exposed);font-weight:600">Exposed</td><td class="num">Yes</td><td class="num" style="color:var(--faint)">?</td><td class="num" style="color:var(--faint)">?</td></tr>
+          <tr><td>B</td><td style="color:var(--exposed);font-weight:600">Exposed</td><td class="num">Yes</td><td class="num" style="color:var(--faint)">?</td><td class="num" style="color:var(--faint)">?</td></tr>
+          <tr><td>C</td><td style="color:var(--exposed);font-weight:600">Exposed</td><td class="num">No</td><td class="num" style="color:var(--faint)">?</td><td class="num" style="color:var(--faint)">?</td></tr>
+          <tr><td>D</td><td style="color:var(--control);font-weight:600">Control</td><td class="num" style="color:var(--faint)">?</td><td class="num">Yes</td><td class="num" style="color:var(--faint)">?</td></tr>
+          <tr><td>E</td><td style="color:var(--control);font-weight:600">Control</td><td class="num" style="color:var(--faint)">?</td><td class="num">No</td><td class="num" style="color:var(--faint)">?</td></tr>
+          <tr><td>F</td><td style="color:var(--control);font-weight:600">Control</td><td class="num" style="color:var(--faint)">?</td><td class="num">No</td><td class="num" style="color:var(--faint)">?</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="center">
+      <p class="lead" data-reveal>A propensity analysis fills the question marks for the exposed group by borrowing answers from controls who resemble them. <strong>The three assumptions below are the conditions under which that borrowing is legitimate.</strong></p>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="unconfoundedness" data-title="Unconfoundedness: you measured why people were exposed">
+  <div class="wrap">
+    <div class="center">
+      <p class="kicker" data-reveal>Assumption one: unconfoundedness</p>
+      <h2 class="headline" data-reveal>You measured why people were exposed.</h2>
+      <p class="lead" data-reveal>Among respondents who look the same on everything in your model, who ended up exposed must be as good as random. It also goes by <strong>conditional independence, ignorability, or selection on observables.</strong> If something you did not measure drives both exposure and the outcome, the estimate is biased, and <strong>nothing in the output will show it.</strong></p>
+    </div>
+    <div class="lab" data-lab="hidden" data-reveal>
+      <div class="lab-grid">
+        <div>
+          <p class="lab-title">Covariate balance</p>
+          <div data-el="love"></div>
+          <ul class="legend" aria-hidden="true">
+            <li><i class="is-ring" style="--c:var(--faint)"></i>before weighting</li>
+            <li><i style="--c:var(--ink)"></i>after weighting</li>
+            <li><i class="is-line" style="--c:var(--bias)"></i>0.1 threshold</li>
+          </ul>
+          <p class="lab-title" style="margin-top:26px">Estimated effect</p>
+          <div data-el="estimates"></div>
+        </div>
+        <div class="lab-side">
+          <div class="control">
+            <label for="hidden-strength">An unmeasured common cause <output data-el="strength-out" for="hidden-strength">moderate</output></label>
+            <input type="range" id="hidden-strength" data-el="strength" min="0" max="100" value="55">
+            <small>Some respondents were already shopping the category. They saw more ads and rate the brand higher. The survey did not ask.</small>
+          </div>
+          <button class="chip" type="button" data-el="reveal" aria-pressed="false">Reveal the unmeasured variable</button>
+          <div class="readouts">
+            <div class="readout"><b data-el="smd">0.00</b><span>worst imbalance among measured covariates, after weighting</span></div>
+            <div class="readout"><b data-el="bias">0</b><span>bias left in the estimate</span></div>
+          </div>
+          <div class="lab-verdict" data-el="verdict" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+    <div class="tiles">
+      <div class="tile tile--third" data-reveal>
+        <h3>Argue it from the assignment.</h3>
+        <p>Write down how respondents came to be exposed and check that each driver is in the model. This is a subject-matter argument. A statistic cannot make it for you.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <h3>Run a placebo outcome.</h3>
+        <p>Add a KPI the campaign could not have moved, such as awareness of an unrelated brand. <strong>Adjusted lift on a placebo should be near zero.</strong> If it is not, something is still unbalanced.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <h3>Ask how strong a hidden cause would need to be.</h3>
+        <p>Sensitivity analysis turns “there might be confounding” into a size. The package does not compute it; the reading list below covers E-values and Rosenbaum bounds.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band band--alt" id="overlap" data-title="Overlap and positivity: comparable people exist">
+  <div class="wrap">
+    <div class="center">
+      <p class="kicker" data-reveal>Assumption two: overlap</p>
+      <h2 class="headline" data-reveal>Comparable people exist.</h2>
+      <p class="lead" data-reveal>For every kind of exposed respondent, there have to be controls of the same kind. Also called <strong>positivity</strong> or <strong>common support</strong>. Drag the slider to make exposure more predictable, and watch what a “better” model does to the comparison.</p>
+    </div>
+    <div class="lab" data-lab="overlap" data-reveal>
+      <div class="lab-grid">
+        <div>
+          <div data-el="hist"></div>
+          <ul class="legend" aria-hidden="true">
+            <li><i style="--c:var(--exposed)"></i>exposed</li>
+            <li><i style="--c:var(--control)"></i>control</li>
+            <li><i style="--c:var(--support);opacity:.45;border-radius:2px"></i>common support</li>
+          </ul>
+        </div>
+        <div class="lab-side">
+          <div class="control">
+            <label for="overlap-sep">How well the features predict exposure <output data-el="sep-out" for="overlap-sep">0.75</output></label>
+            <input type="range" id="overlap-sep" data-el="sep" min="20" max="350" value="90">
+            <small>The readout is the model's AUC. Left: exposure is nearly random. Right: you can tell who was exposed from their profile.</small>
+          </div>
+          <div class="readouts">
+            <div class="readout"><b data-el="auc">0.75</b><span>AUC</span></div>
+            <div class="readout"><b data-el="ovl">0.6</b><span>overlap coefficient</span></div>
+            <div class="readout"><b data-el="ess">0</b><span data-el="ess-of">effective controls</span></div>
+            <div class="readout"><b data-el="top">0%</b><span>of control weight sits on the top 1% of controls</span></div>
+            <div class="readout"><b data-el="high">0%</b><span>of exposed respondents score above 0.9</span></div>
+          </div>
+          <div class="lab-verdict" data-el="verdict" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+    <div class="center section-gap">
+      <h3 class="headline headline--s" data-reveal style="margin:0 auto">A high AUC is a warning, not a result.</h3>
+      <p class="lead" data-reveal>An AUC of 0.95 means you can nearly always tell exposed from control by their profile. So there are almost no controls who look like the exposed, and the estimate rests on a handful of unusual people. <strong>Overlap has to hold in the population. Fitting a better model does not create it.</strong></p>
+    </div>
+    <div class="tiles">
+      <div class="tile tile--third" data-reveal>
+        <h3>What the package reports.</h3>
+        <p>The common-support interval, counts of respondents in the <code>control_only</code>, <code>both</code> and <code>exposed_only</code> regions, and the overlap coefficient. Roughly: above 0.8 is good, 0.5 to 0.8 is workable, below 0.5 is poor.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <h3>What it warns about.</h3>
+        <p>An AUC above 0.9, more than 5% of exposed respondents scoring above every control, and exposed respondents left unmatched by the caliper. Warnings are in <code>result.warnings</code> and on each method.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <h3>What you can do.</h3>
+        <p>Trim to common support, use overlap weights, or tighten the caliper. Each one <strong>changes who the answer is about</strong>: dropping exposed respondents means the estimate no longer covers everyone the campaign reached.</p>
+      </div>
+    </div>
+    <figure class="code wrap--narrow" style="margin:clamp(28px,4vw,48px) auto 0" data-reveal>
+      <pre data-lang="python"><code>ov = result.overlap
+print(ov.overlap_coefficient)                         # 1 = identical distributions, 0 = disjoint
+print(ov.common_support_lower, ov.common_support_upper)
+for r in ov.regions:                                  # control_only, both, exposed_only
+    print(r.region, r.n_exposed, r.n_control, f"{r.pct_exposed:.1f}% of exposed")
+
+# Per-feature gaps: levels or ranges that only one group has
+for f in result.feature_overlap:
+    if f.pct_exposed_unsupported > 0:
+        print(f.feature, f.pct_exposed_unsupported, f.exposed_only_levels)</code></pre>
+    </figure>
+  </div>
+</section>
+
+<section class="band" id="consistency" data-title="Consistency and SUTVA: exposed means one thing">
+  <div class="wrap">
+    <div class="center">
+      <p class="kicker" data-reveal>Assumption three: consistency</p>
+      <h2 class="headline" data-reveal>“Exposed” means one thing.</h2>
+      <p class="lead" data-reveal>The outcome you observe for an exposed respondent has to be the outcome of the exposure you are asking about, and one person's exposure must not change another person's answer. Statisticians bundle these as <strong>SUTVA</strong>: no hidden versions of the treatment, and no interference. Both are decided by how the exposure flag was built.</p>
+    </div>
+    <div class="tiles">
+      <div class="tile" data-reveal>
+        <h3>Where the flag came from.</h3>
+        <p>Ad-server logs and panel matching record exposure. <strong>“Do you remember seeing this ad?” records an outcome.</strong> People who liked the ad remember it, so a recall-based flag sorts respondents by their reaction to the campaign and then credits the campaign for the difference.</p>
+      </div>
+      <div class="tile" data-reveal>
+        <h3>Controls who saw it anyway.</h3>
+        <p>A control exposed on another device, channel or household screen is counted as unexposed. The two groups become more alike than their labels say, and the measured lift shrinks towards zero.</p>
+      </div>
+      <div class="tile" data-reveal>
+        <h3>One flag, many doses.</h3>
+        <p>One impression and twenty are both “exposed”. The estimate is an average over whatever frequency mix your sample has, and it will not transfer to a campaign with a different mix. If frequency matters, define exposure by it and say what happens to everyone in between.</p>
+      </div>
+      <div class="tile" data-reveal>
+        <h3>Effects that travel.</h3>
+        <p>Shared households, word of mouth and social sharing let exposure reach people coded as controls. A respondent-level comparison then measures only the part of the effect that stayed with the person who saw the ad.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band band--alt" id="diagnostics">
+  <div class="wrap">
+    <div class="center">
+      <h2 class="headline" data-reveal>What each diagnostic can tell you, and where it stops.</h2>
+      <p class="lead" data-reveal>Every check in the results is useful. None of them certifies the analysis. Each one checks something narrower than its name suggests.</p>
+    </div>
+    <div class="table-wrap section-gap" data-reveal>
+      <table>
+        <thead><tr><th>Diagnostic</th><th>What it shows</th><th>What it cannot show</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Balance (SMD)</strong></td><td>The measured covariates have similar distributions in the two groups after adjustment.</td><td>Anything about covariates that are not in the table.</td></tr>
+          <tr><td><strong>Overlap coefficient, common support</strong></td><td>Comparable respondents exist, as far as the measured covariates can tell.</td><td>Whether those covariates are the ones that matter.</td></tr>
+          <tr><td><strong>AUC</strong></td><td>How separable the groups are.</td><td>Model quality. Higher is worse for the comparison, and a low AUC does not mean confounders are missing.</td></tr>
+          <tr><td><strong>Calibration</strong></td><td>The scores behave like probabilities, so the weights built from them are sensible.</td><td>That the model includes the right variables.</td></tr>
+          <tr><td><strong>Effective sample size</strong></td><td>How much information survives the weighting.</td><td>Bias. A large effective sample can be precisely wrong.</td></tr>
+          <tr><td><strong>Confidence interval, p-value</strong></td><td>Sampling noise, given that the assumptions hold.</td><td>Error from a violated assumption. The interval does not widen to cover it.</td></tr>
+          <tr><td><strong>Agreement across methods</strong></td><td>The answer does not hinge on one way of using the score.</td><td>Correctness. All five methods use the same covariates and share the same blind spot.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="band band--dark" id="limits">
+  <div class="wrap">
+    <h2 class="headline" data-reveal>Sometimes the honest answer is that this data cannot say.</h2>
+    <p class="lead" data-reveal>Propensity methods work when exposure was driven by things you measured. Online ad delivery often is not: people who are active online on a given day both see more ads and do more of everything else. In a randomised study of this pattern, <strong>the control group showed the same spike in activity on campaign day as the exposed group.</strong></p>
+    <div class="tiles">
+      <div class="tile tile--third" data-reveal>
+        <h3>Exposure followed behaviour you cannot see.</h3>
+        <p>Retargeting, look-alike audiences and bid optimisation select on signals that predict the outcome and are not in your survey.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <h3>Most of the exposed have no counterpart.</h3>
+        <p>An overlap coefficient under 0.5, or a large <code>exposed_only</code> region, means the comparison exists for a small and unusual subset.</p>
+      </div>
+      <div class="tile tile--third" data-reveal>
+        <h3>The flag depends on the respondent's reaction.</h3>
+        <p>Recall-based or completion-based exposure cannot be repaired by adjustment. It needs a different exposure measure or a randomised holdout.</p>
+      </div>
+    </div>
+    <p class="actions" data-reveal>
+      <a class="more" href="https://redam94.github.io/second-brain/Research/Research-Methodology/Activity-Bias-in-Advertising">Activity bias in advertising</a>
+      <a class="more" href="https://redam94.github.io/second-brain/Research/Econometrics/Foundations/The-Experimental-Ideal">The experimental ideal</a>
+    </p>
+  </div>
+</section>
+
+<section class="band" id="reading">
+  <div class="wrap wrap--narrow">
+    <h2 class="headline headline--s" data-reveal>Background reading</h2>
+    <ul class="sources" data-reveal>
+      <li><a href="https://redam94.github.io/second-brain/Research/Bayesian-Statistics/Causal-Inference/Foundations/Potential-Outcomes-Framework"><b>Potential outcomes framework</b><span>Potential outcomes, SUTVA, unconfoundedness and overlap, stated formally.</span><i>Causal inference</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Identification-Strategies/Propensity-Score-Matching/Propensity-Score-Matching---Balancing-Theorem-and-Failure-Modes"><b>Balancing theorem and failure modes</b><span>Why small standardised differences can sit alongside a biased estimate.</span><i>Propensity score matching</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Identification-Strategies/Propensity-Score-Matching/Common-Support-and-Overlap"><b>Common support and overlap</b><span>Extrapolation, trimming, and how dropping treated units changes the estimand.</span><i>Propensity score matching</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Bayesian-Statistics/Causal-Inference/Sensitivity-and-Complex-Mechanisms/Sensitivity-Analysis-in-Observational-Studies"><b>Sensitivity analysis in observational studies</b><span>Cornfield's inequality, E-values and Rosenbaum bounds.</span><i>Causal inference</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Econometrics/Causal-Machine-Learning/DML-Estimators-for-ATE-and-the-Interactive-Model"><b>Doubly robust estimators and overlap</b><span>Overlap as an assumption, and why a highly predictive propensity model signals trouble.</span><i>Causal machine learning</i></a></li>
+      <li><a href="https://redam94.github.io/second-brain/Research/Market-Response-Models/User-Level-Ad-Experiments/Experimental-Benchmarks-for-Observational-Ad-Measurement"><b>Experimental benchmarks for observational ad measurement</b><span>How far observational estimates landed from randomised ones across hundreds of campaigns.</span><i>Market response models</i></a></li>
+    </ul>
+    <div class="actions" data-reveal>
+      <a class="btn" href="methods.html">Next: methods</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer id="footer"></footer>
+<script type="module" src="assets/js/labs.js"></script>
+</body>
+</html>
