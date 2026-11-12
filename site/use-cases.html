@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Use cases | propensity_lift</title>
+<meta name="description" content="Recipes for common propensity_lift analyses: standard brand lift, quota-matched samples, top-two-box outcomes, thin overlap, multiple exposure cells, doubly robust estimation, placebo checks, batch runs and the HTTP API.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header id="nav"></header>
+<script src="assets/js/site.js"></script>
+
+<main id="main">
+
+<section class="band band--tight" id="intro">
+  <div class="wrap">
+    <p class="kicker" data-reveal>Use cases</p>
+    <h1 class="display" data-reveal style="max-width:15ch">Recipes for the common situations.</h1>
+    <p class="lead" data-reveal>Each recipe gives the config, what to check afterwards, and the catch. They assume <code>df</code> is loaded and a base <code>cfg</code> exists, as in the <a class="link" href="walkthrough.html">walkthrough</a>.</p>
+    <div class="chips" id="case-filter" role="group" aria-label="Filter recipes" data-reveal style="margin-top:28px">
+      <button class="chip" type="button" aria-pressed="true" data-filter="all">All</button>
+      <button class="chip" type="button" aria-pressed="false" data-filter="design">Study design</button>
+      <button class="chip" type="button" aria-pressed="false" data-filter="data">Data preparation</button>
+      <button class="chip" type="button" aria-pressed="false" data-filter="robust">Robustness</button>
+      <button class="chip" type="button" aria-pressed="false" data-filter="automate">Automation</button>
+    </div>
+  </div>
+</section>
+
+<section class="band band--flush-top">
+  <div class="wrap">
+    <div class="cases" id="cases" style="margin-top:0">
+
+      <article class="case" id="standard-att" data-tags="design">
+        <div class="case-grid">
+          <div>
+            <h2>Brand lift for one campaign</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>One exposed group, one control group, a handful of KPIs. You want the effect on the people the campaign reached.</dd>
+              <dt>Check afterwards</dt>
+              <dd>The overlap coefficient is above 0.5, no variable is imbalanced after adjustment, and <code>ipw</code> and <code>aipw</code> agree.</dd>
+              <dt>The catch</dt>
+              <dd>The answer is only as good as the covariate list. Write down what drove exposure before choosing features.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>cfg = AnalysisConfig(
+    dataset_id="survey",
+    treatment_column="group",
+    exposed_values=["Exposed"], control_values=["Control"],
+    outcome_columns=["aided_awareness", "favorability", "consideration"],
+    model_features=["age", "gender", "region", "tv_hours_week",
+                    "social_media_hours_day", "prior_brand_usage"],
+    estimand="ATT",
+    methods=["ipw", "aipw", "nn_matching"],
+)
+result = run_analysis(df, cfg)
+
+print(result.overlap.overlap_coefficient)
+for m in result.methods:
+    print(m.label, m.balance_summary.n_imbalanced_after)</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="quota-matched" data-tags="design">
+        <div class="case-grid">
+          <div>
+            <h2>A sample that was quota-matched</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>Controls were recruited to mirror the exposed group on age band, gender and region. You want the analysis to respect those cells.</dd>
+              <dt>Check afterwards</dt>
+              <dd><code>matching.n_exposed_unmatched</code>. Exact cells plus a caliper can leave many exposed respondents without a match.</dd>
+              <dt>The catch</dt>
+              <dd>Quota matching balances the quota variables and nothing else. Media habits and brand history still need to be in <code>model_features</code>.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>cfg = cfg.model_copy(update={
+    "matching_features": ["age_band", "gender", "region"],  # exact-match cells
+    "include_matching_in_model": True,                       # also feed them to the score
+    "methods": ["nn_matching", "ipw"],
+    "match_ratio": 2,          # two controls per exposed respondent
+    "caliper": 0.2,
+})
+result = run_analysis(df, cfg)
+
+info = result.methods[0].matching
+print(info.n_exposed_matched, info.n_exposed_unmatched,
+      info.n_unique_controls_used, info.n_exact_strata)</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="top-box" data-tags="data">
+        <div class="case-grid">
+          <div>
+            <h2>Text scales and top-two box</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>Purchase intent is a five-point text scale and the business reads it as “definitely or probably will”.</dd>
+              <dt>How outcomes are read</dt>
+              <dd>Yes/No, True/False and 0/1 columns become proportions. Numeric scales are reported as means. A text scale needs its positive levels listed, and is then recoded to 1 and 0.</dd>
+              <dt>The catch</dt>
+              <dd>Choose the box before you see results. Top box and top-two box can tell different stories, and picking afterwards is a fork.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>cfg = cfg.model_copy(update={
+    "outcome_columns": ["aided_awareness", "favorability", "purchase_intent"],
+    "outcome_positive_values": {
+        "purchase_intent": ["Definitely will", "Probably will"],
+    },
+})
+result = run_analysis(df, cfg)
+
+# The run records how each outcome was interpreted
+print(result.warnings)
+for c in result.methods[0].contrasts:
+    print(c.outcome, c.outcome_type)</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="messy-codes" data-tags="data">
+        <div class="case-grid">
+          <div>
+            <h2>Several exposure cells, or messy group codes</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>The group column holds more than two values: several creative cells, or codes such as “Unknown”. The example uses a column named <code>cell</code>.</dd>
+              <dt>How rows are assigned</dt>
+              <dd>Rows matching <code>exposed_values</code> are exposed and rows matching <code>control_values</code> are control. Everything else is dropped and counted. If <code>control_values</code> is left unset, every other non-missing value becomes control, with a warning.</dd>
+              <dt>The catch</dt>
+              <dd>Each cell's ATT describes that cell's own audience. Two cells can differ because they reached different people, so do not rank creatives on these numbers alone.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>results = {}
+for cell in ["Video", "Display", "Video + Display"]:
+    cfg_cell = cfg.model_copy(update={
+        "name": cell,
+        "treatment_column": "cell",
+        "exposed_values": [cell],
+        "control_values": ["Control"],      # always name the controls explicitly
+    })
+    results[cell] = run_analysis(df, cfg_cell)
+
+for cell, r in results.items():
+    print(cell, r.sample.n_exposed, r.sample.n_control,
+          "dropped:", r.sample.n_dropped_treatment_missing)</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="missing-data" data-tags="data">
+        <div class="case-grid">
+          <div>
+            <h2>Missing answers</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>Some respondents skipped income, or a KPI question.</dd>
+              <dt>What happens by default</dt>
+              <dd>With <code>missing_strategy="impute"</code>, numeric features are median-imputed and gain a missing-indicator column, so the two groups are also balanced on who skipped the question. A missing categorical answer is treated as its own level. A respondent missing a KPI is dropped for that KPI only.</dd>
+              <dt>The catch</dt>
+              <dd><code>"drop"</code> removes every respondent with any missing feature. That is simpler to explain and can change who the sample represents.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>profile = profile_dataframe(df, dataset_id="survey", filename="survey.xlsx")
+print([(c.name, c.n_missing) for c in profile.columns if c.n_missing])
+
+strict = run_analysis(df, cfg.model_copy(update={"missing_strategy": "drop"}))
+print(strict.sample.n_dropped_feature_missing)
+
+# n differs by outcome when KPI answers are missing
+for c in strict.methods[0].contrasts:
+    print(c.outcome, c.n_exposed, c.n_control)</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="thin-overlap" data-tags="robust design">
+        <div class="case-grid">
+          <div>
+            <h2>Thin overlap</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>The overlap coefficient is low, a few controls carry most of the weight, or the run warns that exposed respondents score above every control.</dd>
+              <dt>Options</dt>
+              <dd>Trim to the shared score range, switch to overlap weights, or both. Compare the effective number of controls before and after.</dd>
+              <dt>The catch</dt>
+              <dd>All of these narrow the population. Report how many exposed respondents were removed, and describe the estimate as applying to the comparable ones.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>base = run_analysis(df, cfg)
+print(base.overlap.overlap_coefficient, base.warnings)
+
+trimmed = run_analysis(df, cfg.model_copy(update={
+    "trim": "common_support",                 # or "crump": keep scores 0.1 to 0.9
+    "methods": ["ipw", "overlap_weights"],
+}))
+print(trimmed.overlap.n_trimmed_exposed, trimmed.overlap.n_trimmed_control)
+for m in trimmed.methods:
+    print(m.label, m.weights.ess_control, m.weights.max)</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="doubly-robust" data-tags="robust">
+        <div class="case-grid">
+          <div>
+            <h2>Doubting the model's shape</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>Exposure may depend on the covariates in ways a logistic model misses: thresholds, interactions, frequency caps.</dd>
+              <dt>Options</dt>
+              <dd>Add <code>aipw</code>, which is consistent when either the score model or the outcome model is right. Rerun with <code>gradient_boosting</code> and compare balance.</dd>
+              <dt>The catch</dt>
+              <dd>Both guard against the wrong functional form. Neither helps with a variable that is missing. With tree models, bootstrap intervals hold the scores fixed and the run says so.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>for model_type in ["logistic", "gradient_boosting"]:
+    r = run_analysis(df, cfg.model_copy(update={
+        "model_type": model_type,
+        "methods": ["ipw", "aipw"],
+    }))
+    print(model_type, "AUC", round(r.model.auc, 2))
+    for m in r.methods:
+        c = m.contrasts[0]
+        print("  ", m.method, m.balance_summary.max_abs_smd_after,
+              f"{c.lift:+.3f} [{c.ci_low:+.3f}, {c.ci_high:+.3f}]")</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="placebo" data-tags="robust">
+        <div class="case-grid">
+          <div>
+            <h2>A placebo outcome</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>You want evidence about confounding beyond the balance table.</dd>
+              <dt>How</dt>
+              <dd>Add a KPI the campaign could not have changed: awareness of an unrelated brand, or an attitude the creative never touched. Its adjusted lift should be close to zero.</dd>
+              <dt>The catch</dt>
+              <dd>A clean placebo is encouraging and proves nothing. A placebo that moves is a clear sign something is unbalanced. In the sample data, <code>unaided_awareness</code> plays this role.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>placebo = "unaided_awareness"       # no true effect in the sample data
+r = run_analysis(df, cfg.model_copy(update={
+    "outcome_columns": list(dict.fromkeys([*cfg.outcome_columns, placebo])),
+}))
+for m in r.methods:
+    c = next(c for c in m.contrasts if c.outcome == placebo)
+    print(m.method, f"raw {c.raw_diff:+.3f}  adjusted {c.lift:+.3f}",
+          "significant" if c.significant else "not significant")</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="whole-audience" data-tags="design">
+        <div class="case-grid">
+          <div>
+            <h2>The effect across the whole audience</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>The decision is about extending the campaign to everyone, so you want the average effect over exposed and unexposed alike.</dd>
+              <dt>Check afterwards</dt>
+              <dd>Effective sample size in <em>both</em> groups, and the largest weight. The ATE needs exposed respondents who look like typical controls.</dd>
+              <dt>The catch</dt>
+              <dd>You are extrapolating the effect to people the campaign did not reach. If those people differ from the reached in how they respond, the data cannot tell you.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>r = run_analysis(df, cfg.model_copy(update={
+    "estimand": "ATE",
+    "methods": ["ipw", "aipw"],
+    # "weight_clip": 0.99,   # only if a few weights dominate; it trades variance for bias
+}))
+for m in r.methods:
+    w = m.weights
+    print(m.label, "ESS exposed", round(w.ess_exposed), "ESS control", round(w.ess_control),
+          "max weight", round(w.max, 1), "clipped", w.n_clipped)</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="subgroup-readouts" data-tags="design">
+        <div class="case-grid">
+          <div>
+            <h2>Lift by segment</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>Stakeholders want lift by gender, age band or region.</dd>
+              <dt>How</dt>
+              <dd>List the columns in <code>subgroup_columns</code>. Numeric columns with more than 10 values are cut into quintiles. Levels with fewer than 10 respondents in either group are skipped.</dd>
+              <dt>The catch</dt>
+              <dd>The weights were built to balance the whole sample. Inside a small segment they may not. Read segment results as descriptive, and name the segments you care about in advance.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>r = run_analysis(df, cfg.model_copy(update={
+    "subgroup_columns": ["gender", "age_band"],
+    "methods": ["ipw"],
+}))
+for s in r.methods[0].subgroups:
+    if s.outcome == "aided_awareness":
+        print(f"{s.subgroup_column}={s.subgroup_level:12} n={s.n_exposed}/{s.n_control} "
+              f"lift {s.lift:+.3f} [{s.ci_low:+.3f}, {s.ci_high:+.3f}]")</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="sensitivity-to-settings" data-tags="robust">
+        <div class="case-grid">
+          <div>
+            <h2>Does the answer depend on my settings?</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>You chose a caliper and a model type, and want to know how much rides on those choices.</dd>
+              <dt>How</dt>
+              <dd>Rerun over a small, pre-declared grid and report the range. Set <code>n_bootstrap=0</code> for speed while exploring.</dd>
+              <dt>The catch</dt>
+              <dd>This is a robustness report for a result you already committed to. Used to pick the setting with the best-looking lift, it is a search for significance.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="python"><code>rows = []
+for model_type in ["logistic", "gradient_boosting"]:
+    for caliper in [0.1, 0.2, 0.25]:
+        r = run_analysis(df, cfg.model_copy(update={
+            "model_type": model_type, "caliper": caliper,
+            "methods": ["nn_matching", "ipw"], "n_bootstrap": 0,
+        }))
+        for m in r.methods:
+            rows.append((model_type, caliper, m.method, m.contrasts[0].lift))
+
+lifts = [lift for *_, lift in rows]
+print(f"primary KPI lift ranges from {min(lifts):+.3f} to {max(lifts):+.3f}")</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="batch" data-tags="automate">
+        <div class="case-grid">
+          <div>
+            <h2>Many surveys from the command line</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>A tracker delivers a new file every wave, with the same columns.</dd>
+              <dt>How</dt>
+              <dd>Keep one <code>cfg.json</code> under version control and run the CLI per file. <code>dataset_id</code> defaults to the file name.</dd>
+              <dt>The catch</dt>
+              <dd>A fixed config is the point: the analysis was decided before the data arrived. Keep it fixed, and still read each wave's overlap and warnings.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="bash"><code># Inspect a new file's columns
+uv run propensity-lift profile waves/2026-10.xlsx --sheet Respondents
+
+# Run every wave with the same config
+for f in waves/*.xlsx; do
+  uv run propensity-lift run "$f" --config cfg.json \
+    --out "results/$(basename "$f" .xlsx).json" --quiet
+done</code></pre></figure>
+        </div>
+      </article>
+
+      <article class="case" id="http" data-tags="automate">
+        <div class="case-grid">
+          <div>
+            <h2>Over HTTP</h2>
+            <dl>
+              <dt>Situation</dt>
+              <dd>Another system needs to submit analyses and collect results.</dd>
+              <dt>How</dt>
+              <dd>Upload a file, post an <code>AnalysisConfig</code> that references the returned <code>dataset_id</code>, poll until the job completes, then read the result or download the Excel export. Analyses run in a process pool, so several can run at once.</dd>
+              <dt>The catch</dt>
+              <dd>The config is validated when you submit it. A column that does not exist, or an empty group, comes back as a 422 with a message.</dd>
+            </dl>
+          </div>
+          <figure class="code"><pre data-lang="bash"><code>make dev-backend                                   # serves http://localhost:8000
+
+curl -F file=@survey.xlsx localhost:8000/api/datasets            # returns dataset_id
+curl -X POST localhost:8000/api/analyses \
+  -H 'content-type: application/json' -d @cfg.json               # returns analysis_id
+curl localhost:8000/api/analyses/ANALYSIS_ID                     # status, progress, result
+curl -OJ localhost:8000/api/analyses/ANALYSIS_ID/export          # .xlsx workbook</code></pre></figure>
+        </div>
+      </article>
+
+    </div>
+    <p class="api-empty" id="cases-empty" hidden>No recipes in this group.</p>
+    <div class="actions" style="margin-top:44px">
+      <a class="btn" href="api.html">API reference</a>
+      <a class="more" href="walkthrough.html">Back to the walkthrough</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer id="footer"></footer>
+<script>
+(function () {
+  var buttons = document.querySelectorAll("#case-filter .chip");
+  var cases = document.querySelectorAll("#cases .case");
+  buttons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var f = b.getAttribute("data-filter");
+      var shown = 0;
+      buttons.forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      cases.forEach(function (c) {
+        var on = f === "all" || c.getAttribute("data-tags").split(" ").indexOf(f) >= 0;
+        c.hidden = !on;
+        if (on) shown++;
+      });
+      document.getElementById("cases-empty").hidden = shown > 0;
+    });
+  });
+})();
+</script>
+</body>
+</html>

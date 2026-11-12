@@ -17,7 +17,7 @@ help:
 	@echo "make sample        regenerate sample_data/brand_lift_sample.xlsx"
 	@echo "make site          preview the documentation site on :$(SITE_PORT)"
 	@echo "make site-data     regenerate the site's API reference and walkthrough data"
-	@echo "make site-check    fail if the committed API reference is out of date"
+	@echo "make site-check    fail if the API reference is stale or a code example on the site no longer runs"
 
 install:
 	uv sync
@@ -54,6 +54,7 @@ site-data:
 
 site-check:
 	uv run python scripts/build_site_data.py --check
+	uv run python scripts/check_site_snippets.py
 
 lint:
 	uv run ruff check packages backend

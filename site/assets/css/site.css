@@ -656,6 +656,7 @@ pre {
   font-family: var(--mono);
 }
 :not(pre) > code {
+  overflow-wrap: anywhere;
   font-size: 0.88em;
   padding: 0.12em 0.36em;
   border-radius: 6px;
@@ -677,25 +678,28 @@ pre {
   opacity: 1;
   transform: none;
 }
-/* Headlines wipe in line by line instead of fading. */
+/* Headlines wipe in instead of fading. The clip sits on an inner wrapper (added by site.js):
+   an element clipped to nothing never reports as intersecting, so it could not reveal itself. */
 .headline[data-reveal],
 .display[data-reveal] {
   opacity: 1;
   transform: none;
-  clip-path: inset(0 0 100% 0);
-  transition: clip-path 1.1s var(--ease), translate 1.1s var(--ease);
-  translate: 0 0.35em;
 }
-.headline[data-reveal].is-in,
-.display[data-reveal].is-in {
+.reveal-inner {
+  display: block;
+  clip-path: inset(0 0 100% 0);
+  translate: 0 0.35em;
+  transition: clip-path 1.1s var(--ease), translate 1.1s var(--ease);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+.is-in > .reveal-inner {
   clip-path: inset(-0.2em -0.1em -0.25em -0.1em);
   translate: 0 0;
 }
+
 .no-js [data-reveal] {
   opacity: 1;
   transform: none;
-  clip-path: none;
-  translate: none;
 }
 
 /* ---------------------------------------------------------------- tiles */
@@ -1631,6 +1635,7 @@ td code {
 td.num,
 th.num {
   text-align: right;
+  white-space: nowrap;
 }
 .pill {
   display: inline-block;
@@ -1833,6 +1838,30 @@ th.num {
 }
 .api-entry .table-wrap {
   margin: 14px 0 0;
+}
+tr.api-field {
+  scroll-margin-top: calc(var(--nav-h) + 20px);
+}
+.is-target {
+  animation: target-flash 2.2s var(--ease);
+}
+@keyframes target-flash {
+  0%, 35% { background-color: var(--exposed-soft); }
+  100% { background-color: transparent; }
+}
+.api-entry table {
+  table-layout: fixed;
+  min-width: 620px;
+}
+.api-entry th:nth-child(1) { width: 24%; }
+.api-entry th:nth-child(2) { width: 27%; }
+.api-entry th:nth-child(3) { width: 17%; }
+.api-entry td code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.api-entry td:first-child code {
+  white-space: nowrap;
 }
 .api-module-head {
   margin: 0 0 6px;
@@ -2149,8 +2178,10 @@ th.num {
   [data-reveal] {
     opacity: 1;
     transform: none;
-    clip-path: none !important;
-    translate: none !important;
+  }
+  .reveal-inner {
+    clip-path: none;
+    translate: none;
   }
   ::view-transition-old(site-main),
   ::view-transition-new(site-main) {
@@ -2168,6 +2199,8 @@ th.num {
   [data-reveal] {
     opacity: 1;
     transform: none;
+  }
+  .reveal-inner {
     clip-path: none;
     translate: none;
   }

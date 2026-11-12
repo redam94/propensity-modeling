@@ -124,7 +124,7 @@
       },
       {
        "name": "progress",
-       "type": "Optional[Callable[[<class 'float'>, <class 'str'>], None]]",
+       "type": "Optional[Callable[[float, str], None]]",
        "required": false,
        "default": "None"
       }
@@ -2315,7 +2315,7 @@
       },
       {
        "name": "warn",
-       "type": "Optional[Callable[[<class 'str'>], None]]",
+       "type": "Optional[Callable[[str], None]]",
        "required": false,
        "default": "None"
       }
@@ -2457,7 +2457,7 @@
        },
        {
         "name": "exposed_values",
-        "type": "List[str | int | float | bool]",
+        "type": "List[Scalar]",
         "required": true,
         "description": "values meaning \"exposed\"",
         "constraints": [],
@@ -2465,7 +2465,7 @@
        },
        {
         "name": "control_values",
-        "type": "Optional[List[str | int | float | bool]]",
+        "type": "Optional[List[Scalar]]",
         "required": false,
         "description": "None => every other non-missing value is control",
         "constraints": [],
@@ -2484,7 +2484,7 @@
        },
        {
         "name": "outcome_positive_values",
-        "type": "Dict[str, List[str | int | float | bool]]",
+        "type": "Dict[str, List[Scalar]]",
         "required": false,
         "description": "Optional recode of outcomes to binary, e.g. top-2-box: {\"purchase_intent\": [\"Very likely\", \"Somewhat likely\"]} -> 1 if in list else 0",
         "constraints": [],
@@ -2834,7 +2834,7 @@
       "fields": [
        {
         "name": "value",
-        "type": "str | int | float | bool",
+        "type": "Scalar",
         "required": true,
         "description": "",
         "constraints": [],
@@ -4578,7 +4578,7 @@
   "aliases": [
    {
     "name": "Scalar",
-    "type": "str | int | float | bool",
+    "type": "Scalar",
     "values": []
    },
    {

@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Walkthrough | propensity_lift</title>
+<meta name="description" content="An end-to-end propensity score analysis with propensity_lift on the bundled sample survey: install, frame, load, configure, run, check overlap and balance, read lift, and report.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header id="nav"></header>
+<script src="assets/js/site.js"></script>
+
+<main id="main">
+
+<section class="band band--tight" id="intro">
+  <div class="wrap">
+    <p class="kicker" data-reveal>Walkthrough</p>
+    <h1 class="display" data-reveal style="max-width:16ch">One analysis, start to finish.</h1>
+    <p class="lead" data-reveal>This page runs the package on its bundled sample survey: <strong><span data-w="n_rows" data-fmt="int">3,000</span> respondents, <span data-w="n_cols">51</span> columns</strong>, with exposure that depends on age, media habits and prior brand usage. The data are simulated, so the true effects are known. Every chart and number below comes from an actual run.</p>
+  </div>
+</section>
+
+<section class="band band--flush-top">
+  <div class="wrap doc">
+    <nav class="doc-toc" aria-label="On this page">
+      <p class="doc-toc-title">On this page</p>
+      <ol>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#question">1. Write the question</a></li>
+        <li><a href="#load">2. Load and profile</a></li>
+        <li><a href="#config">3. Configure</a></li>
+        <li><a href="#run">4. Run</a></li>
+        <li><a href="#overlap">5. Check overlap</a></li>
+        <li><a href="#model">6. Inspect the model</a></li>
+        <li><a href="#balance">7. Check balance</a></li>
+        <li><a href="#lift">8. Read the lift</a></li>
+        <li><a href="#subgroups">9. Subgroups</a></li>
+        <li><a href="#report">10. Report and export</a></li>
+        <li><a href="#app">The same run in the web app</a></li>
+      </ol>
+    </nav>
+
+    <div class="doc-body">
+
+      <section id="install">
+        <h2>Install</h2>
+        <div class="prose">
+          <p>The repository is a <a href="https://docs.astral.sh/uv/">uv</a> workspace. Cloning it gives you the library, the web app and the sample data.</p>
+        </div>
+        <figure class="code"><pre data-lang="bash"><code>git clone https://github.com/redam94/propensity-modeling.git
+cd propensity-modeling
+uv sync</code></pre></figure>
+        <div class="prose">
+          <p>To use only the library in another project, install it straight from the repository. It needs Python 3.10 or later.</p>
+        </div>
+        <figure class="code"><pre data-lang="bash"><code>pip install "git+https://github.com/redam94/propensity-modeling.git#subdirectory=packages/propensity_lift"</code></pre></figure>
+      </section>
+
+      <section id="question">
+        <h2><span class="step-n">Step 1</span> Write the question before opening the data.</h2>
+        <div class="prose">
+          <p>The steps after this one are mechanical. This one is not, and it decides what the rest will mean. For the sample survey:</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><td><strong>Question</strong></td><td>Among respondents who were exposed to the campaign, how much higher is each brand KPI than it would have been without exposure?</td></tr>
+              <tr><td><strong>Estimand</strong></td><td>ATT, the effect on the exposed.</td></tr>
+              <tr><td><strong>Exposure</strong></td><td>The <code>group</code> column, <code>Exposed</code> against <code>Control</code>.</td></tr>
+              <tr><td><strong>How exposure happened</strong></td><td>Younger respondents, heavy social and streaming users, and current brand users were more likely to be reached. Device and ad blocking mattered too.</td></tr>
+              <tr><td><strong>Covariates</strong></td><td>Demographics, media habits, prior brand usage and category purchase frequency. All describe the respondent before the campaign.</td></tr>
+              <tr><td><strong>Left out on purpose</strong></td><td>The attitude scales and the brand loyalty score. In a post-campaign survey the ad could have moved them.</td></tr>
+              <tr><td><strong>Primary KPI</strong></td><td>Aided awareness. The others are secondary.</td></tr>
+              <tr><td><strong>Placebo check</strong></td><td><code>unaided_awareness</code>, which the simulation gives no true effect. Adjusted lift on it should be near zero.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><a class="more" href="framing.html">How to frame your own</a></p>
+      </section>
+
+      <section id="load">
+        <h2><span class="step-n">Step 2</span> Load and profile the data.</h2>
+        <div class="prose">
+          <p><code>load_table</code> reads Excel or CSV into a DataFrame, one row per respondent. <code>profile_dataframe</code> classifies every column and suggests a role for it.</p>
+        </div>
+        <figure class="code"><pre data-lang="python"><code>from propensity_lift import load_table, profile_dataframe
+
+df = load_table("sample_data/brand_lift_sample.xlsx")
+# No file to hand? The same data: from propensity_lift import make_brand_lift_sample; df = make_brand_lift_sample(n=3000, seed=0)
+
+profile = profile_dataframe(df, dataset_id="sample", filename="brand_lift_sample.xlsx")
+for col in profile.columns:
+    print(col.name, col.kind, col.n_missing, col.suggested_role)</code></pre></figure>
+        <p class="lab-note">The first rows and columns of <code>df</code></p>
+        <div class="table-wrap" id="w-head"></div>
+        <p class="lab-note">The profile, all <span data-w="n_cols">51</span> columns</p>
+        <div class="table-wrap" id="w-profile" style="max-height:440px;overflow:auto"></div>
+        <div class="callout callout--bias">
+          <b>The suggested role is a guess about a column's shape.</b>
+          <p>The profiler suggests <em>model feature</em> for the attitude scales and <code>brand_loyalty_score</code> because they look like covariates. It cannot know they were measured after exposure. Deciding what belongs in the model is your job. <a href="framing.html#variables">Which variables belong</a></p>
+        </div>
+      </section>
+
+      <section id="config">
+        <h2><span class="step-n">Step 3</span> Turn the question into a config.</h2>
+        <div class="prose">
+          <p>An <code>AnalysisConfig</code> holds every decision from step 1. Each block below maps to one line of the framing table.</p>
+        </div>
+        <figure class="code"><pre data-lang="python"><code>from propensity_lift import AnalysisConfig
+
+cfg = AnalysisConfig(
+    dataset_id="sample",
+
+    # Who is exposed and who is control
+    treatment_column="group",
+    exposed_values=["Exposed"],
+    control_values=["Control"],
+
+    # What is measured. Yes/No columns are read as proportions automatically;
+    # a text scale needs its positive levels named (here, top-two box).
+    outcome_columns=["aided_awareness", "unaided_awareness", "favorability",
+                     "consideration", "purchase_intent", "ad_recall"],
+    outcome_positive_values={"purchase_intent": ["Definitely will", "Probably will"]},
+
+    # What drove exposure. Everything here was fixed before the campaign.
+    model_features=[
+        "age", "income_band", "education", "employment", "marital_status", "household_size",
+        "children_in_household", "urbanicity", "ethnicity", "household_income_k",
+        "tv_hours_week", "social_media_hours_day", "streaming_hours_week", "radio_hours_week",
+        "podcast_listener", "primary_device", "ad_blocker", "social_platforms_used",
+        "prior_brand_usage", "category_purchase_freq",
+    ],
+    matching_features=["age_band", "gender", "region"],   # the survey's quota cells
+    subgroup_columns=["gender"],
+
+    # How to adjust
+    estimand="ATT",
+    model_type="logistic",
+    methods=["nn_matching", "ipw", "overlap_weights", "stratification", "aipw"],
+    n_bootstrap=200,
+)</code></pre></figure>
+        <div class="prose">
+          <p><code>propensity_lift.sample_data.sample_analysis_config()</code> returns this config ready-made. Options left at their defaults: a 0.2 caliper, 1:1 matching with replacement, no trimming, no weight clipping, <code>alpha=0.05</code>. <a href="api.html#AnalysisConfig">Every option</a></p>
+        </div>
+      </section>
+
+      <section id="run">
+        <h2><span class="step-n">Step 4</span> Run it.</h2>
+        <figure class="code"><pre data-lang="python"><code>from propensity_lift import run_analysis
+
+result = run_analysis(df, cfg, progress=lambda frac, stage: print(f"{frac:4.0%} {stage}"))</code></pre></figure>
+        <figure class="code output">
+          <div class="code-head"><span>Output</span></div>
+          <pre id="w-progress" style="max-height:260px;overflow:auto" aria-label="Progress output"></pre>
+        </figure>
+        <div class="prose">
+          <p>The run analysed <strong><span data-w="result.sample.n_analysed_exposed" data-fmt="int">1,208</span> exposed</strong> and <strong><span data-w="result.sample.n_analysed_control" data-fmt="int">1,792</span> control</strong> respondents. Read the warnings before anything else. They are the package telling you where the analysis departs from what you asked for.</p>
+        </div>
+        <figure class="code"><pre data-lang="python"><code>print(result.sample)
+print(result.warnings)
+for m in result.methods:
+    print(m.label, m.warnings)</code></pre></figure>
+        <div class="table-wrap" id="w-warnings"></div>
+        <div class="prose">
+          <p>Two of these matter. Matching left <strong><span data-w="result.methods[nn_matching].matching.n_exposed_unmatched" data-fmt="int">123</span> exposed respondents</strong> without a control inside the caliper and its exact-match cells, so its estimate covers the rest. And overlap weights answer for the overlap population, not the exposed.</p>
+        </div>
+      </section>
+
+      <section id="overlap">
+        <h2><span class="step-n">Step 5</span> Check overlap before any lift number.</h2>
+        <div class="prose">
+          <p>If comparable respondents do not exist, nothing downstream can be trusted. Look at where the two groups sit on the propensity score.</p>
+        </div>
+        <div class="lab" style="margin-top:22px">
+          <div id="w-overlap"></div>
+          <ul class="legend" aria-hidden="true">
+            <li><i style="--c:var(--exposed)"></i>exposed</li>
+            <li><i style="--c:var(--control)"></i>control</li>
+            <li><i style="--c:var(--support);opacity:.45;border-radius:2px"></i>common support</li>
+          </ul>
+          <div class="readouts" style="margin-top:22px">
+            <div class="readout"><b data-w="result.overlap.overlap_coefficient" data-fmt="f2">0.71</b><span>overlap coefficient</span></div>
+            <div class="readout"><b data-w="result.model.auc" data-fmt="f2">0.69</b><span>model AUC</span></div>
+            <div class="readout"><b data-w="result.overlap.regions[both].pct_exposed" data-fmt="rawpct">99.6%</b><span>of exposed inside common support</span></div>
+            <div class="readout"><b data-w="result.overlap.regions[exposed_only].n_exposed">5</b><span>exposed above every control</span></div>
+          </div>
+        </div>
+        <div class="table-wrap" id="w-regions"></div>
+        <div class="prose">
+          <p>The overlap coefficient of <span data-w="result.overlap.overlap_coefficient" data-fmt="f2">0.71</span> is in the workable range, and nearly every exposed respondent sits inside the range the controls cover. The groups differ, visibly, but controls exist across the whole exposed distribution. The analysis can proceed without trimming.</p>
+          <p>Overlap is also reported feature by feature, which is where you find a level or a range that only one group has.</p>
+        </div>
+        <figure class="code"><pre data-lang="python"><code>for f in sorted(result.feature_overlap, key=lambda f: f.overlap_coefficient)[:6]:
+    print(f.feature, f.overlap_coefficient, f.pct_exposed_unsupported, f.pct_control_unsupported)</code></pre></figure>
+        <div class="table-wrap" id="w-feature-overlap"></div>
+        <p><a class="more" href="identification.html#overlap">What overlap is and why AUC misleads</a></p>
+      </section>
+
+      <section id="model">
+        <h2><span class="step-n">Step 6</span> Inspect the propensity model.</h2>
+        <div class="prose">
+          <p>You are checking two things: that the scores behave like probabilities, and that the model has not separated the groups so sharply that overlap is gone. An AUC of <span data-w="result.model.auc" data-fmt="f2">0.69</span> is unremarkable, which here is good news.</p>
+        </div>
+        <div class="lab" style="margin-top:22px">
+          <div class="lab-grid lab-grid--even">
+            <div>
+              <p class="lab-title">Calibration</p>
+              <p class="lab-note">Each dot is a tenth of the sample. On the diagonal, predicted and actual exposure rates agree.</p>
+              <div id="w-calibration"></div>
+            </div>
+            <div>
+              <p class="lab-title">What predicts exposure</p>
+              <p class="lab-note">Share of total importance, top ten features.</p>
+              <div id="w-importance" style="margin-top:18px"></div>
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          <b>The importance chart describes exposure, not the outcome.</b>
+          <p>It tells you who the campaign reached. Use it to sanity-check the story from step 1: if a variable you expected to drive exposure is missing from the top, ask why. Do not report it as what drives awareness.</p>
+        </div>
+      </section>
+
+      <section id="balance">
+        <h2><span class="step-n">Step 7</span> Check balance, method by method.</h2>
+        <div class="prose">
+          <p>Before adjustment, <span data-w="result.methods[ipw].balance_summary.n_imbalanced_before">19</span> variables differ between the groups by more than 0.1 standard deviations. The largest gap is <span data-w="result.methods[ipw].balance_summary.max_abs_smd_before" data-fmt="f2">0.39</span>. Each method should pull every dot to the left of the dashed line.</p>
+        </div>
+        <div class="lab" style="margin-top:22px">
+          <div class="seg" id="w-love-method" role="radiogroup" aria-label="Method"></div>
+          <div id="w-love" style="margin-top:18px"></div>
+          <ul class="legend" aria-hidden="true">
+            <li><i class="is-ring" style="--c:var(--faint)"></i>before</li>
+            <li><i style="--c:var(--ink)"></i>after</li>
+            <li><i style="--c:var(--bias)"></i>after, still above 0.1</li>
+          </ul>
+          <p class="lab-note" id="w-love-note" style="margin-top:10px"></p>
+        </div>
+        <div class="table-wrap" id="w-balance-summary"></div>
+        <div class="prose">
+          <p>Weighting leaves nothing above the threshold. Matching leaves one variable just over it and keeps far fewer effective controls, which is why its intervals will be the widest. Overlap weights balance almost exactly, as they are built to.</p>
+          <p><strong>This table covers the variables in the model.</strong> It cannot show imbalance on anything that was not measured. <a href="identification.html#unconfoundedness">Why that matters</a></p>
+        </div>
+      </section>
+
+      <section id="lift">
+        <h2><span class="step-n">Step 8</span> Read the lift.</h2>
+        <div class="prose">
+          <p>Now open the outcomes. For each KPI, compare the raw difference with what each method reports. A hollow marker means the interval includes zero.</p>
+        </div>
+        <div class="lab" style="margin-top:22px">
+          <div class="seg" id="w-lift-outcome" role="radiogroup" aria-label="Outcome"></div>
+          <div id="w-lift" style="margin-top:14px"></div>
+          <ul class="legend" aria-hidden="true">
+            <li><i class="is-diamond is-ring" style="--c:var(--faint)"></i>raw difference</li>
+            <li><i style="--c:var(--ink)"></i>adjusted, significant</li>
+            <li><i class="is-ring" style="--c:var(--ink)"></i>adjusted, not significant</li>
+          </ul>
+        </div>
+        <div class="table-wrap" id="w-lift-table"></div>
+        <div class="prose">
+          <h3>What these results say</h3>
+          <ul>
+            <li><strong>Adjustment shrinks every KPI.</strong> Consideration goes from a raw <span data-w="result.methods[ipw].contrasts[consideration].raw_diff" data-fmt="pp">+14.0 pp</span> to <span data-w="result.methods[ipw].contrasts[consideration].lift" data-fmt="pp">+8.0 pp</span> under IPW. The gap between them is the part of the raw difference that the measured covariates explain.</li>
+            <li><strong>The weighting methods agree.</strong> IPW, overlap weights, stratification and AIPW land within about a point of each other on most KPIs. That says the result does not depend on how the score is used. It says nothing about whether the covariates are sufficient.</li>
+            <li><strong>The placebo behaves.</strong> Unaided awareness shows a raw <span data-w="result.methods[ipw].contrasts[unaided_awareness].raw_diff" data-fmt="pp">+3.6 pp</span> that is pure confounding. After adjustment the weighting methods put it at <span data-w="result.methods[ipw].contrasts[unaided_awareness].lift" data-fmt="pp">−3.1 pp</span> with intervals that include zero.</li>
+            <li><strong>One false positive.</strong> Matching reports the same placebo as significant, p = <span data-w="result.methods[nn_matching].contrasts[unaided_awareness].p_value" data-fmt="p">0.046</span>. With six KPIs and five methods, one result at that level is expected by chance. It is also the method that dropped <span data-w="result.methods[nn_matching].matching.n_exposed_unmatched" data-fmt="int">123</span> exposed respondents.</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <b>Why there is no “true effect” line on most KPIs.</b>
+          <p>The simulation sets its effects on a latent scale (log-odds), which does not convert to one fixed number of percentage points. Unaided awareness is the exception: its true effect is zero on any scale.</p>
+        </div>
+        <figure class="code"><pre data-lang="python"><code>for m in result.methods:
+    for c in m.contrasts:
+        print(f"{m.method:16} {c.outcome:18} raw {c.raw_diff:+.3f}  lift {c.lift:+.3f} "
+              f"[{c.ci_low:+.3f}, {c.ci_high:+.3f}]  p={c.p_value:.3f}  n_eff={c.effective_n_control:.0f}")</code></pre></figure>
+      </section>
+
+      <section id="subgroups">
+        <h2><span class="step-n">Step 9</span> Break it out by subgroup, carefully.</h2>
+        <div class="prose">
+          <p>Columns in <code>subgroup_columns</code> get their own contrasts, using the same weights or matches as the main analysis. A level needs at least 10 exposed and 10 control respondents to be reported.</p>
+        </div>
+        <div class="lab" style="margin-top:22px">
+          <div class="seg" id="w-subgroup-outcome" role="radiogroup" aria-label="Outcome"></div>
+          <div id="w-subgroups" style="margin-top:14px"></div>
+        </div>
+        <div class="prose" style="margin-top:22px">
+          <p>The small group has an interval several times wider than the others. A subgroup difference is only worth reporting when the intervals clearly separate, and each extra breakout is another chance to find a pattern in noise. Decide which subgroups matter before you run.</p>
+        </div>
+        <figure class="code"><pre data-lang="python"><code>ipw = next(m for m in result.methods if m.method == "ipw")
+for s in ipw.subgroups:
+    print(s.subgroup_column, s.subgroup_level, s.outcome, f"{s.lift:+.3f}", s.n_exposed, s.n_control)</code></pre></figure>
+      </section>
+
+      <section id="report">
+        <h2><span class="step-n">Step 10</span> Report it so a reader can judge it.</h2>
+        <div class="prose">
+          <p>A lift number without its assumptions invites the reader to treat it as an experiment. Put these alongside it:</p>
+          <ul>
+            <li><strong>The question.</strong> Population, exposure definition, estimand.</li>
+            <li><strong>The sample.</strong> How many exposed and control, and how many were dropped, trimmed or left unmatched.</li>
+            <li><strong>What was adjusted for,</strong> and what you believe drove exposure but could not measure.</li>
+            <li><strong>Overlap and balance.</strong> The overlap coefficient, the largest standardised difference after adjustment, the effective number of controls.</li>
+            <li><strong>Every method you ran,</strong> not only the one you lead with.</li>
+            <li><strong>The placebo result,</strong> if you ran one.</li>
+          </ul>
+          <p>The result object serialises to the same JSON the HTTP API returns, and the CLI runs the whole analysis from a config file.</p>
+        </div>
+        <figure class="code"><pre data-lang="python"><code>from pathlib import Path
+
+Path("result.json").write_text(result.model_dump_json(indent=2))
+Path("cfg.json").write_text(cfg.model_dump_json(indent=2))</code></pre></figure>
+        <figure class="code"><pre data-lang="bash"><code>uv run propensity-lift profile sample_data/brand_lift_sample.xlsx
+uv run propensity-lift run sample_data/brand_lift_sample.xlsx --config cfg.json --out result.json</code></pre></figure>
+      </section>
+
+      <section id="app">
+        <h2>The same run in the web app.</h2>
+        <div class="prose">
+          <p>The repository includes a FastAPI service and a React interface over the same library. Start both, open <code>http://localhost:5173</code> and upload <code>sample_data/brand_lift_sample.xlsx</code>.</p>
+        </div>
+        <figure class="code"><pre data-lang="bash"><code>make dev-backend     # API on http://localhost:8000, interactive docs at /docs
+make dev-frontend    # interface on http://localhost:5173</code></pre></figure>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Page</th><th>What you do there</th><th>Step above</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Upload</strong></td><td>Drop the file and pick a sheet. The profile is computed on upload.</td><td>2</td></tr>
+              <tr><td><strong>Configure</strong></td><td>Assign a role to each column, choose exposed and control values, pick methods.</td><td>3</td></tr>
+              <tr><td><strong>Runs</strong></td><td>Watch progress. Several analyses can run at once.</td><td>4</td></tr>
+              <tr><td><strong>Results</strong></td><td>Tabs for Lift, Overlap, Balance, Model, Subgroups and Config, with export to Excel.</td><td>5 to 10</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prose">
+          <p>The Results page opens on the Lift tab. Read Overlap and Balance first anyway.</p>
+        </div>
+        <div class="actions">
+          <a class="btn" href="use-cases.html">Common use cases</a>
+          <a class="more" href="api.html">API reference</a>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</section>
+
+</main>
+<footer id="footer"></footer>
+<script type="module" src="assets/js/walkthrough.js"></script>
+</body>
+</html>

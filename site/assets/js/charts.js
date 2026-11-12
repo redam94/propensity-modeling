@@ -62,14 +62,16 @@ export function makeChart(el, { height = 320, margin = {}, label = "" } = {}, dr
 
   function render(animate) {
     if (data === null) return;
-    const mm = typeof margin === "function" ? { ...m, ...margin(el.clientWidth) } : m;
+    const mm = typeof margin === "function" ? { ...m, ...margin(el.clientWidth) } : { ...m };
+    if (data && data.xTitle) mm.bottom = Math.max(mm.bottom, 52);
     const width = Math.max(260, el.clientWidth);
     const H = typeof height === "function" ? height(data, width) : height;
     svg.attr("width", width).attr("height", H).attr("viewBox", `0 0 ${width} ${H}`);
     g.attr("transform", `translate(${mm.left},${mm.top})`);
     const go = animate && !reduceMotion.matches;
     const t = (sel, dur = 650) => (go ? sel.transition().duration(dur).ease(d3.easeCubicOut) : sel);
-    draw({ svg, g, w: width - mm.left - mm.right, h: H - mm.top - mm.bottom, t, animate: go }, data);
+    // cx is the horizontal centre of the whole figure in plot coordinates, for centring axis titles.
+    draw({ svg, g, w: width - mm.left - mm.right, h: H - mm.top - mm.bottom, cx: width / 2 - mm.left, t, animate: go }, data);
   }
 
   let lastW = 0;
@@ -173,7 +175,7 @@ export function mirrorHist(el, opts = {}) {
 export function estimateRows(el, opts = {}) {
   const rowH = opts.rowH || 44;
   const left = (width) => ({ left: Math.min(opts.labelWidth || 170, Math.round(width * 0.36)) });
-  return makeChart(el, { height: (d) => d.rows.length * rowH + 62, margin: (w) => ({ top: 26, right: 58, bottom: 36, ...left(w) }), label: opts.label || "Estimates" }, (ctx, d) => {
+  return makeChart(el, { height: (d) => d.rows.length * rowH + (d.xTitle ? 78 : 62), margin: (w) => ({ top: 26, right: 58, ...left(w) }), label: opts.label || "Estimates" }, (ctx, d) => {
     const { g, w, h, t } = ctx;
     const fmt = d.fmt || ((v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2));
     const tickFmt = d.tickFmt || ((v) => (v > 0 ? "+" : v < 0 ? "−" : "") + d3.format("~g")(Math.abs(v)));
@@ -193,7 +195,7 @@ export function estimateRows(el, opts = {}) {
     const grid = ensure(g, ".grid", "g", "grid");
     grid.call(d3.axisBottom(x).ticks(Math.max(3, Math.floor(w / 90))).tickSize(h).tickFormat(""));
     grid.select(".domain").remove();
-    if (d.xTitle) ensure(g, ".axis-title", "text", "axis-title").attr("x", w / 2).attr("y", h + 34).attr("text-anchor", "middle").text(d.xTitle);
+    if (d.xTitle) ensure(g, ".axis-title", "text", "axis-title").attr("x", ctx.cx).attr("y", h + 42).attr("text-anchor", "middle").text(d.xTitle);
 
     const zero = ensure(g, ".zero", "line", "zero").style("stroke", "var(--faint)");
     t(zero).attr("x1", x(0)).attr("x2", x(0)).attr("y1", 0).attr("y2", h).style("opacity", d.zero === false || dom[0] > 0 || dom[1] < 0 ? 0 : 1);
@@ -264,7 +266,7 @@ export function lovePlot(el, opts = {}) {
 
     const axis = ensure(g, ".x-axis", "g", "x-axis").attr("transform", `translate(0,${h})`);
     t(axis).call(d3.axisBottom(x).ticks(Math.max(3, Math.floor(w / 80))).tickSizeOuter(0).tickPadding(8));
-    ensure(g, ".axis-title", "text", "axis-title").attr("x", w / 2).attr("y", h + 36).attr("text-anchor", "middle").text("Absolute standardised mean difference");
+    ensure(g, ".axis-title", "text", "axis-title").attr("x", ctx.cx).attr("y", h + 36).attr("text-anchor", "middle").text("Absolute standardised mean difference");
     const th = ensure(g, ".thr", "g", "thr");
     t(ensure(th, "line", "line", "").style("stroke", "var(--bias)").style("stroke-dasharray", "4 4"))
       .attr("x1", x(thr)).attr("x2", x(thr)).attr("y1", -6).attr("y2", h);
@@ -323,14 +325,14 @@ export function weightCurve(el, opts = {}) {
 // ------------------------------------------------------------ calibration
 /** Decile calibration of the propensity model. data: { points: [[meanPredicted, observedRate, n], ...] } */
 export function calibrationPlot(el) {
-  return makeChart(el, { height: 320, margin: { top: 30, right: 16, bottom: 44, left: 46 }, label: "Calibration of the propensity model by decile" }, (ctx, d) => {
+  return makeChart(el, { height: 330, margin: { top: 38, right: 16, bottom: 44, left: 46 }, label: "Calibration of the propensity model by decile" }, (ctx, d) => {
     const { g, w, h, t } = ctx;
     const x = d3.scaleLinear([0, 1], [0, w]);
     const y = d3.scaleLinear([0, 1], [h, 0]);
     ensure(g, ".x-axis", "g", "x-axis").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x).ticks(5).tickSizeOuter(0).tickPadding(8));
     ensure(g, ".y-axis", "g", "y-axis").call(d3.axisLeft(y).ticks(5).tickSizeOuter(0).tickPadding(6));
     ensure(g, ".axis-title", "text", "axis-title").attr("x", w / 2).attr("y", h + 38).attr("text-anchor", "middle").text("Mean predicted propensity (decile)");
-    ensure(g, ".y-title", "text", "y-title axis-title").attr("x", -40).attr("y", -14).text("Share actually exposed");
+    ensure(g, ".y-title", "text", "y-title axis-title").attr("x", -40).attr("y", -20).text("Share actually exposed");
     ensure(g, ".diag", "line", "diag").attr("x1", x(0)).attr("y1", y(0)).attr("x2", x(1)).attr("y2", y(1)).style("stroke", "var(--faint)").style("stroke-dasharray", "4 4");
     const pts = g.selectAll("circle.cal").data(d.points);
     const merged = pts.enter().append("circle").attr("class", "cal").attr("r", 6).style("fill", "var(--ink)").attr("cx", (p) => x(p[0])).attr("cy", y(0)).merge(pts);

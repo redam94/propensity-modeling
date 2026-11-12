@@ -102,7 +102,7 @@ function dagLab(root) {
         { key: "naive", label: "No adjustment", value: mean(naive), samples: naive, color: "var(--faint)" },
         { key: "model", label: "Your model", note: keys.length ? `${keys.length} variable${keys.length > 1 ? "s" : ""}` : "nothing selected", value: mean(est), samples: est },
       ],
-      truth: TRUE_EFFECT, truthLabel: "True effect", domain: [-1.15, 1.7], xTitle: "Estimated effect of exposure on purchase intent (scale points)",
+      truth: TRUE_EFFECT, truthLabel: "True effect", domain: [-1.15, 1.7], xTitle: "Effect on purchase intent (scale points)",
     });
     countTo(el(root, "auc"), mean(aucs), (v) => v.toFixed(2));
     countTo(el(root, "bias"), bias, (v) => signed(v));
@@ -248,7 +248,7 @@ function hiddenLab(root) {
         { key: "raw", label: "Raw difference", value: raw, color: "var(--faint)", shape: "diamond", hollow: true },
         { key: "adj", label: "After weighting", value: adj },
       ],
-      truth: TRUE_EFFECT, domain: [0, 2.1], zero: false, xTitle: "Estimated effect on favourability (scale points)",
+      truth: TRUE_EFFECT, domain: [0, 2.1], zero: false, xTitle: "Effect on favourability (scale points)",
     });
     countTo(el(root, "smd"), worst, (v) => v.toFixed(3));
     countTo(el(root, "bias"), adj - TRUE_EFFECT, (v) => signed(v));

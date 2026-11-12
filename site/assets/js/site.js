@@ -205,26 +205,37 @@
     return indexPromise;
   }
 
+  // Light stemming so "confounder" finds "confounding" and "weights" finds "weighting".
+  function stem(t) {
+    return t.length > 5 ? t.replace(/(ing|ers|er|ed|es|s)$/, "") : t;
+  }
+
   function query(q) {
-    var tokens = q.toLowerCase().split(/[\s.]+/).filter(Boolean);
+    var tokens = q.toLowerCase().split(/[\s.]+/).filter(Boolean).map(stem);
     if (!tokens.length || !index) return [];
+    var exact = q.toLowerCase().trim();
     var hits = [];
     index.forEach(function (d) {
       var score = 0;
+      var matched = 0;
       for (var i = 0; i < tokens.length; i++) {
         var t = tokens[i];
         var ti = d.lt.indexOf(t);
         var xi = d.lx.indexOf(t);
-        if (ti < 0 && xi < 0) return;
+        if (ti < 0 && xi < 0) continue;
+        matched++;
         if (ti === 0) score += 14;
         else if (ti > 0) score += /[\s._(-]/.test(d.lt[ti - 1]) ? 10 : 6;
         if (xi >= 0) score += 1 + Math.min(3, d.lx.split(t).length - 1) * 0.5;
       }
-      if (d.lt === q.toLowerCase().trim() || d.lt === q.toLowerCase().trim() + "()") score += 30;
-      hits.push({ doc: d, score: score * d.weight });
+      if (!matched) return;
+      if (d.lt === exact || d.lt === exact + "()") score += 30;
+      hits.push({ doc: d, matched: matched, score: score * d.weight });
     });
-    hits.sort(function (a, b) { return b.score - a.score; });
-    return hits.slice(0, 14);
+    // Entries matching every word come first; partial matches only fill in when there are few of those.
+    hits.sort(function (a, b) { return b.matched - a.matched || b.score - a.score; });
+    var full = hits.filter(function (h) { return h.matched === tokens.length; });
+    return (full.length >= 3 ? full : hits).slice(0, 14);
   }
 
   function mark(text, tokens) {
@@ -289,7 +300,7 @@
         list.innerHTML = '<li class="search-empty">Building the index…</li>';
         return;
       }
-      var tokens = q.toLowerCase().split(/[\s.]+/).filter(Boolean);
+      var tokens = q.toLowerCase().split(/[\s.]+/).filter(Boolean).map(stem);
       var hits = query(q);
       if (!hits.length) {
         list.innerHTML =
@@ -335,7 +346,9 @@
       if (nav) nav.classList.remove("is-open");
       input.value = "";
       renderSuggest();
-      setTimeout(function () { input.focus(); }, 30);
+      void overlay.offsetWidth; // apply visibility now, so focus lands before the first keystroke
+      input.focus();
+      setTimeout(function () { input.focus(); }, 60);
       loadIndex().then(function () { if (input.value.trim()) render(); });
     }
     function close() {
@@ -376,6 +389,14 @@
   function setupReveal() {
     var els = Array.prototype.slice.call(document.querySelectorAll("[data-reveal]"));
     if (!els.length) return;
+    // Headlines reveal by clipping an inner wrapper (see the note in site.css).
+    els.forEach(function (el) {
+      if (!/\b(headline|display)\b/.test(el.className) || el.querySelector(".reveal-inner")) return;
+      var inner = document.createElement("span");
+      inner.className = "reveal-inner";
+      while (el.firstChild) inner.appendChild(el.firstChild);
+      el.appendChild(inner);
+    });
     // Stagger siblings that enter together.
     var seen = new Map();
     els.forEach(function (el) {

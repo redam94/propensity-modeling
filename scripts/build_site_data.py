@@ -77,11 +77,17 @@ def _type_str(tp: Any) -> str:
         return "None"
     if isinstance(tp, str):
         return tp
+    if isinstance(tp, list):  # the parameter list of a Callable
+        return "[" + ", ".join(_type_str(a) for a in tp) + "]"
     origin = typing.get_origin(tp)
     args = typing.get_args(tp)
+    if origin is typing.Union and set(args) == {str, int, float, bool}:
+        return "Scalar"  # the schema module's alias for a cell value
     if origin is typing.Union:
         non_none = [a for a in args if a is not type(None)]
         if len(non_none) < len(args):
+            if set(non_none) == {str, int, float, bool}:
+                return "Optional[Scalar]"
             inner = _type_str(non_none[0]) if len(non_none) == 1 else " | ".join(_type_str(a) for a in non_none)
             return f"Optional[{inner}]"
         return " | ".join(_type_str(a) for a in args)
