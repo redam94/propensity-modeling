@@ -10,7 +10,7 @@ export type Scalar = string | number | boolean;
 
 export type ColumnKind = "numeric" | "binary" | "categorical" | "datetime" | "text" | "empty";
 export type ModelType = "logistic" | "gradient_boosting" | "random_forest";
-export type Method = "nn_matching" | "ipw" | "overlap_weights" | "stratification";
+export type Method = "nn_matching" | "ipw" | "overlap_weights" | "stratification" | "aipw";
 export type Estimand = "ATT" | "ATE";
 export type TrimRule = "none" | "common_support" | "crump";
 export type OutcomeType = "binary" | "continuous";

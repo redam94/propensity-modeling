@@ -130,6 +130,7 @@ decile calibration plot. A high AUC (> 0.8) means the groups differ a lot, so ch
 | `ipw` | Inverse probability weights. ATT: exposed = 1, control = e/(1−e). ATE: 1/e and 1/(1−e). Weights are normalised within each group and optionally clipped at the `weight_clip` quantile. |
 | `overlap_weights` | Exposed = 1−e, control = e. These weights are bounded and automatically down-weight respondents in the regions where the groups do not overlap. |
 | `stratification` | `n_strata` PS-quantile strata, using the exposed group's quantiles for ATT, with weights within each stratum. |
+| `aipw` | Doubly robust augmented IPW. An outcome model is fitted per group on the model features (logistic for binary outcomes, linear otherwise), and the IPW weights (same weights, clipping and estimand as `ipw`) correct its residuals. The estimate stays consistent if either the propensity model or the outcome model is right, and is usually more precise than `ipw`. The outcome models are always these regressions, whatever `model_type` is used for the propensity score. |
 
 **Trimming** can be applied before adjustment: `common_support` drops respondents outside the PS range shared by both
 groups, and `crump` keeps only 0.1 ≤ PS ≤ 0.9.

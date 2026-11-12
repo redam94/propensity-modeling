@@ -12,6 +12,7 @@ packages/propensity_lift/         pip-installable analysis library  (import name
     models.py       fit_propensity(X, t, model_type, random_state) -> (ps array, ModelSummary)
     matching.py     nearest-neighbour matching on logit(PS), caliper, ratio, replacement, exact strata (matching_features)
     weighting.py    IPW (ATT/ATE), overlap weights, stratification weights, clipping, Kish ESS
+    doubly_robust.py  AIPW: per-arm outcome regressions + IPW-weighted residual correction, influence-function SE
     diagnostics.py  balance table (SMD, variance ratios, weighted), BalanceSummary
     overlap.py      PS over/underlap (histogram, KDE, regions, OVL, trimming) + per-feature over/underlap
     lift.py         outcome contrasts: weighted means, absolute/relative lift, bootstrap/analytic CI, p-values, subgroups
@@ -48,6 +49,11 @@ scripts/make_sample_excel.py      writes sample_data/brand_lift_sample.xlsx
   clipping at the `weight_clip` quantile (off by default; IPW warns if clipping moves an estimate by > 0.25 SE).
 * **Overlap weights**: exposed 1-e, control e (estimand ATO; reported under `estimand` field as configured but label says ATO).
 * **Stratification**: `n_strata` PS quantile strata (by exposed quantiles for ATT), within-stratum weights.
+* **AIPW** (doubly robust): mu_a = target-population mean of m_a(X) + IPW-weighted mean over arm a of (Y − m_a(X)),
+  lift = mu_1 − mu_0. m_a is a per-arm regression on the PS model features (ridge logistic for binary outcomes, OLS
+  otherwise). Target population = analysed exposed (ATT) or all analysed (ATE); for ATT only m_0 is fitted and mu_1 is
+  the observed exposed mean. Weights, clipping, balance and ESS are those of IPW. Bootstrap replicates refit the
+  outcome models (and the logistic PS model); with `n_bootstrap = 0` the SE is the influence-function SE.
 * **Balance**: SMD = (mean_e − mean_c)/sqrt((var_e + var_c)/2) using the *unadjusted* pooled SD as denominator both
   before and after; weighted means/variances after. |SMD| > 0.1 flagged.
 * **Contrasts**: weighted difference of means. CI = lift ± z·SE. SE by bootstrap when `n_bootstrap > 0`: respondents

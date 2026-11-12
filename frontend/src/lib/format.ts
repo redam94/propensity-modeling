@@ -150,6 +150,7 @@ export const METHOD_LABELS: Record<Method, string> = {
   ipw: "IPW",
   overlap_weights: "Overlap weights",
   stratification: "Stratification",
+  aipw: "AIPW (doubly robust)",
 };
 
 export const ROLE_LABELS: Record<string, string> = {

@@ -530,6 +530,7 @@ const ALL_METHODS: { value: Method; help: string }[] = [
   { value: "ipw", help: "Inverse probability weights" },
   { value: "overlap_weights", help: "ATO, robust to poor overlap" },
   { value: "stratification", help: "PS quantile strata" },
+  { value: "aipw", help: "Doubly robust: outcome model + IPW" },
 ];
 
 function OptionsPanel({
@@ -544,7 +545,7 @@ function OptionsPanel({
   const toggleMethod = (m: Method) =>
     set({ methods: o.methods.includes(m) ? o.methods.filter((x) => x !== m) : [...o.methods, m] });
   const usesMatching = o.methods.includes("nn_matching");
-  const usesWeights = o.methods.some((m) => m === "ipw" || m === "overlap_weights");
+  const usesWeights = o.methods.some((m) => m === "ipw" || m === "overlap_weights" || m === "aipw");
   return (
     <Card title="Analysis options">
       <div className="fields">

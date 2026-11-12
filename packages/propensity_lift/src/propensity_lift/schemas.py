@@ -34,7 +34,7 @@ Scalar = Union[str, int, float, bool]
 
 ColumnKind = Literal["numeric", "binary", "categorical", "datetime", "text", "empty"]
 ModelType = Literal["logistic", "gradient_boosting", "random_forest"]
-Method = Literal["nn_matching", "ipw", "overlap_weights", "stratification"]
+Method = Literal["nn_matching", "ipw", "overlap_weights", "stratification", "aipw"]
 Estimand = Literal["ATT", "ATE"]
 TrimRule = Literal["none", "common_support", "crump"]
 OutcomeType = Literal["binary", "continuous"]
@@ -105,7 +105,7 @@ class AnalysisConfig(BaseModel):
     match_ratio: int = Field(1, ge=1, le=10)  # controls per exposed
     replacement: bool = True
     # weighting
-    weight_clip: Optional[float] = None  # opt-in cap on IPW weights at this per-group quantile (0.99 = p99); None = no clipping (unbiased)
+    weight_clip: Optional[float] = None  # opt-in cap on IPW / AIPW weights at this per-group quantile (0.99 = p99); None = no clipping (unbiased)
     n_strata: int = Field(5, ge=2, le=20)  # for stratification
 
     trim: TrimRule = "none"
@@ -234,7 +234,7 @@ class OutcomeContrast(BaseModel):
     n_exposed: int
     n_control: int
     effective_n_control: float          # Kish ESS for weighted methods, matched n otherwise
-    exposed_mean: float                 # proportion (0-1) for binary
+    exposed_mean: float                 # proportion (0-1) for binary; AIPW: model-based, may fall slightly outside
     control_mean_raw: float
     control_mean_adjusted: float        # counterfactual control mean after adjustment
     raw_diff: float                     # exposed_mean - control_mean_raw

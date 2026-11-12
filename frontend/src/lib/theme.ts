@@ -50,6 +50,7 @@ const LIGHT: Palette = {
     ipw: "#009E73",
     overlap_weights: "#CC79A7",
     stratification: "#A16207",
+    aipw: "#D55E00",
   },
   series: ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#7C3AED", "#A16207", "#56B4E9", "#E69F00"],
 };
@@ -77,6 +78,7 @@ const DARK: Palette = {
     ipw: "#34D399",
     overlap_weights: "#F0A3CB",
     stratification: "#FACC15",
+    aipw: "#FF9A52",
   },
   series: ["#56B4E9", "#FF9A52", "#34D399", "#F0A3CB", "#A78BFA", "#FACC15", "#93C5FD", "#FDBA74"],
 };

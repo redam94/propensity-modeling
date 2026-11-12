@@ -15,6 +15,7 @@ import pandas as pd
 
 from ._utils import finite
 from .diagnostics import balance_table
+from .doubly_robust import aipw_estimate, fit_outcome_models
 from .io import infer_kind
 from .lift import analytic_se, bootstrap_se, contrast_fields, group_sums, lift_only, outcome_matrix
 from .matching import MatchResult, nn_match
@@ -88,7 +89,7 @@ class AdjustInfo:
     n_clipped: int = 0
     match: Optional[MatchResult] = None
     n_empty_strata: int = 0
-    w_unclipped: Optional[np.ndarray] = None   # IPW only, when weight_clip changed any weight
+    w_unclipped: Optional[np.ndarray] = None   # IPW / AIPW only, when weight_clip changed any weight
 
 
 def _adjust(
@@ -105,7 +106,7 @@ def _adjust(
         mr = nn_match(lg, t, caliper_abs, cfg.match_ratio, cfg.replacement, strata, cfg.estimand)
         info.match = mr
         return mr.weights, info
-    if method == "ipw":
+    if method in ("ipw", "aipw"):   # AIPW corrects its outcome model with the IPW weights
         w_raw = ipw_weights(ps, t, cfg.estimand)
         w, info.n_clipped = clip_weights(w_raw, t, cfg.weight_clip)
         if info.n_clipped:
@@ -130,6 +131,9 @@ def _label(method: str, cfg: AnalysisConfig) -> str:
     if method == "ipw":
         clip = f", clipped at p{cfg.weight_clip * 100:g}" if cfg.weight_clip else ""
         return f"IPW ({cfg.estimand}{clip})"
+    if method == "aipw":
+        clip = f", weights clipped at p{cfg.weight_clip * 100:g}" if cfg.weight_clip else ""
+        return f"Doubly robust AIPW ({cfg.estimand}{clip})"
     if method == "overlap_weights":
         return "Overlap weights (ATO)"
     return f"PS stratification ({cfg.n_strata} strata, {cfg.estimand})"
@@ -479,6 +483,23 @@ def _run_method(method: Method, ctx: _Ctx, report: ProgressFn) -> MethodResult:
     c = group_sums(w * (1 - te), ctx.D, ctx.Y, ctx.M)
     se_an = analytic_se(e, c)
 
+    # AIPW: outcome regressions on the PS model features, residuals corrected with the IPW weights.
+    # ``mult`` holds each row's multiplicity (1 for analysed rows; bootstrap counts in replicates).
+    dr = method == "aipw"
+    dr_est = None
+    if dr:
+        binary = [o.outcome_type == "binary" for o in ctx.outcomes]
+        arms = (0, 1) if cfg.estimand == "ATE" else (0,)   # ATT: the exposed-arm model cancels
+        target = np.ones(n) if cfg.estimand == "ATE" else te
+
+        def aipw(wv: np.ndarray, mult: np.ndarray, with_se: bool = False):
+            m0, m1 = fit_outcome_models(ctx.X_model, ctx.Y, ctx.M, t, binary, mult, arms)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                return aipw_estimate(wv, mult * target, t, ctx.D, ctx.Y, ctx.M, m0, m1, with_se)
+
+        dr_est = aipw(w, ctx.analysed.astype(float), with_se=True)
+        se_an = dr_est.se
+
     # ---- bootstrap ------------------------------------------------------- #
     # Weighting methods: the PS model is refitted in every replicate (logistic only -- cheap),
     # so the SE reflects PS estimation; holding the PS fixed makes IPW / overlap SEs roughly
@@ -494,7 +515,12 @@ def _run_method(method: Method, ctx: _Ctx, report: ProgressFn) -> MethodResult:
             f"Bootstrap SEs hold the {cfg.model_type} propensity model fixed (refitting is only done for "
             "logistic models), which tends to overstate SEs for weighting methods"
         )
-    if B == 0:
+    if B == 0 and dr:
+        warn.append(
+            "Analytic SEs (n_bootstrap=0) are influence-function SEs that treat the fitted propensity and "
+            "outcome models as known; use the bootstrap for reliable CIs and p-values"
+        )
+    elif B == 0:
         warn.append(
             "Analytic SEs (n_bootstrap=0) ignore estimation of the propensity score"
             + (" and the reuse/pairing of matched controls" if method == "nn_matching" else "")
@@ -528,8 +554,11 @@ def _run_method(method: Method, ctx: _Ctx, report: ProgressFn) -> MethodResult:
             stb = ctx.strata[bi] if ctx.strata is not None else None
             wb_sub, _ = _adjust(method, psb, lgb, t[bi], stb, cfg, ctx.caliper_abs)
             wb = np.bincount(bi, weights=wb_sub, minlength=n)
-            with np.errstate(divide="ignore", invalid="ignore"):
-                lifts[b] = lift_only(wb, t, ctx.D, ctx.Y, ctx.M)
+            if dr:   # outcome models are refitted on the replicate
+                lifts[b] = aipw(wb, np.bincount(bi, minlength=n).astype(float)).lift
+            else:
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    lifts[b] = lift_only(wb, t, ctx.D, ctx.Y, ctx.M)
             if b % step == 0:
                 report(0.1 + 0.85 * b / B, f"{method}: bootstrapping ({b}/{B})")
         se_bs = bootstrap_se(lifts)
@@ -538,12 +567,15 @@ def _run_method(method: Method, ctx: _Ctx, report: ProgressFn) -> MethodResult:
     if info.w_unclipped is not None:
         w_unc = np.zeros(n)
         w_unc[idx] = normalize_within_group(info.w_unclipped, t[idx])
-        with np.errstate(divide="ignore", invalid="ignore"):
-            lift_unclipped = lift_only(w_unc, t, ctx.D, ctx.Y, ctx.M)
+        if dr:
+            lift_unclipped = aipw(w_unc, ctx.analysed.astype(float)).lift
+        else:
+            with np.errstate(divide="ignore", invalid="ignore"):
+                lift_unclipped = lift_only(w_unc, t, ctx.D, ctx.Y, ctx.M)
 
     # ---- contrasts ------------------------------------------------------- #
     report(0.96, f"{method}: contrasts")
-    em, cm = e.mean(), c.mean()
+    em, cm = (dr_est.exposed_mean, dr_est.control_mean) if dr_est is not None else (e.mean(), c.mean())
     rem, rcm = ctx.raw_e.mean(), ctx.raw_c.mean()
     ess_c_g = c.ess()
     contrasts: List[OutcomeContrast] = []
@@ -580,7 +612,7 @@ def _run_method(method: Method, ctx: _Ctx, report: ProgressFn) -> MethodResult:
                     unc, clp = float(lift_unclipped[0, k]), fields["lift"]
                     if math.isfinite(unc) and abs(unc - clp) > 0.25 * fields["se"]:
                         warn.append(
-                            f"IPW weight clipping at p{cfg.weight_clip * 100:g} shifted the {od.name} estimate "
+                            f"{'AIPW' if dr else 'IPW'} weight clipping at p{cfg.weight_clip * 100:g} shifted the {od.name} estimate "
                             f"from {unc:.3g} (unclipped) to {clp:.3g}; clipping trades bias for variance and "
                             "changes the effective estimand (consider overlap weights or trimming instead)"
                         )
