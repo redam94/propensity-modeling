@@ -36,6 +36,10 @@ jobs:
         run: uv sync --frozen
       - name: Regenerate the API reference from source
         run: uv run python scripts/build_site_data.py --api-only
+      # Pages caches assets for 10 minutes. Stamping the commit onto stylesheet and script URLs
+      # makes browsers fetch the new files after every deploy instead of mixing old CSS with new HTML.
+      - name: Stamp asset URLs with the commit
+        run: sed -i -E 's#(href="assets/css/site\.css|src="assets/js/[a-z]+\.js)"#\1?v=${{ github.sha }}"#g' site/*.html
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
