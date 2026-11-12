@@ -1,0 +1,4912 @@
+{
+ "package": "propensity_lift",
+ "distribution": "propensity-lift",
+ "version": "0.1.0",
+ "exports": [
+  "AnalysisConfig",
+  "AnalysisResult",
+  "AnalysisSubmitted",
+  "BalanceRow",
+  "BalanceSummary",
+  "ColumnKind",
+  "ColumnProfile",
+  "DatasetProfile",
+  "DensityCurve",
+  "Estimand",
+  "FeatureImportance",
+  "FeatureOverlap",
+  "Histogram",
+  "JobDetail",
+  "JobInfo",
+  "JobStatus",
+  "LevelShare",
+  "MatchingInfo",
+  "Method",
+  "MethodResult",
+  "ModelSummary",
+  "ModelType",
+  "OutcomeContrast",
+  "OutcomeType",
+  "OverlapSummary",
+  "Quantiles",
+  "RegionCount",
+  "SampleSummary",
+  "Scalar",
+  "SubgroupContrast",
+  "SupportRegion",
+  "TrimRule",
+  "ValueCount",
+  "WeightSummary",
+  "list_sheets",
+  "load_table",
+  "make_brand_lift_sample",
+  "profile_dataframe",
+  "run_analysis"
+ ],
+ "modules": [
+  {
+   "name": "pipeline",
+   "import": "propensity_lift.pipeline",
+   "role": "Run a whole analysis",
+   "doc": "End-to-end analysis orchestration: run_analysis(df, config) -> AnalysisResult.",
+   "members": [
+    {
+     "name": "AdjustInfo",
+     "kind": "dataclass",
+     "doc": "",
+     "fields": [
+      {
+       "name": "n_clipped",
+       "type": "int",
+       "required": false,
+       "description": "",
+       "constraints": [],
+       "inherited": false,
+       "default": "0"
+      },
+      {
+       "name": "match",
+       "type": "Optional[MatchResult]",
+       "required": false,
+       "description": "",
+       "constraints": [],
+       "inherited": false,
+       "default": "None"
+      },
+      {
+       "name": "n_empty_strata",
+       "type": "int",
+       "required": false,
+       "description": "",
+       "constraints": [],
+       "inherited": false,
+       "default": "0"
+      },
+      {
+       "name": "w_unclipped",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "description": "IPW / AIPW only, when weight_clip changed any weight",
+       "constraints": [],
+       "inherited": false,
+       "default": "None"
+      }
+     ],
+     "methods": [],
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/pipeline.py",
+      "line": 87,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/pipeline.py#L87"
+     }
+    },
+    {
+     "name": "run_analysis",
+     "kind": "function",
+     "module": "propensity_lift.pipeline",
+     "exported": true,
+     "signature": "(df: DataFrame, config: propensity_lift.schemas.AnalysisConfig, analysis_id: Optional[str] = None, progress: Optional[Callable[[float, str], NoneType]] = None) -> propensity_lift.schemas.AnalysisResult",
+     "params": [
+      {
+       "name": "df",
+       "type": "DataFrame",
+       "required": true
+      },
+      {
+       "name": "config",
+       "type": "AnalysisConfig",
+       "required": true
+      },
+      {
+       "name": "analysis_id",
+       "type": "Optional[str]",
+       "required": false,
+       "default": "None"
+      },
+      {
+       "name": "progress",
+       "type": "Optional[Callable[[<class 'float'>, <class 'str'>], None]]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "AnalysisResult",
+     "doc": "Run a full propensity / brand-lift analysis.\n\n``progress(fraction, stage)`` is called at each stage (fraction in [0, 1]).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/pipeline.py",
+      "line": 234,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/pipeline.py#L234"
+     }
+    }
+   ],
+   "constants": [
+    {
+     "name": "MIN_SUBGROUP_N",
+     "type": "int",
+     "value": "10"
+    },
+    {
+     "name": "MAX_SUBGROUP_LEVELS",
+     "type": "int",
+     "value": "30"
+    }
+   ],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/pipeline.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/pipeline.py"
+   }
+  },
+  {
+   "name": "io",
+   "import": "propensity_lift.io",
+   "role": "Load and profile data",
+   "doc": "Loading tables (Excel / CSV) and profiling columns.",
+   "members": [
+    {
+     "name": "list_sheets",
+     "kind": "function",
+     "module": "propensity_lift.io",
+     "exported": true,
+     "signature": "(path: Union[str, os.PathLike[str]]) -> List[str]",
+     "params": [
+      {
+       "name": "path",
+       "type": "str | PathLike[str]",
+       "required": true
+      }
+     ],
+     "returns": "List[str]",
+     "doc": "Sheet names of an Excel workbook ([] for CSV).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/io.py",
+      "line": 32,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/io.py#L32"
+     }
+    },
+    {
+     "name": "clean_columns",
+     "kind": "function",
+     "module": "propensity_lift.io",
+     "exported": false,
+     "signature": "(df: DataFrame) -> DataFrame",
+     "params": [
+      {
+       "name": "df",
+       "type": "DataFrame",
+       "required": true
+      }
+     ],
+     "returns": "DataFrame",
+     "doc": "Strip column-name whitespace, make names unique, drop fully-empty rows/cols.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/io.py",
+      "line": 43,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/io.py#L43"
+     }
+    },
+    {
+     "name": "load_table",
+     "kind": "function",
+     "module": "propensity_lift.io",
+     "exported": true,
+     "signature": "(path: Union[str, os.PathLike[str]], sheet: Optional[str] = None) -> DataFrame",
+     "params": [
+      {
+       "name": "path",
+       "type": "str | PathLike[str]",
+       "required": true
+      },
+      {
+       "name": "sheet",
+       "type": "Optional[str]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "DataFrame",
+     "doc": "Load an .xlsx/.xlsm/.xls/.csv file into a DataFrame.\n\n``sheet`` selects an Excel sheet (default: first). Column names are\nstripped and de-duplicated.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/io.py",
+      "line": 54,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/io.py#L54"
+     }
+    },
+    {
+     "name": "numeric_values",
+     "kind": "function",
+     "module": "propensity_lift.io",
+     "exported": false,
+     "signature": "(s: Series) -> Optional[Series]",
+     "params": [
+      {
+       "name": "s",
+       "type": "Series",
+       "required": true
+      }
+     ],
+     "returns": "Optional[Series]",
+     "doc": "Return s as float Series if every non-missing value is numeric, else None.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/io.py",
+      "line": 93,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/io.py#L93"
+     }
+    },
+    {
+     "name": "infer_kind",
+     "kind": "function",
+     "module": "propensity_lift.io",
+     "exported": false,
+     "signature": "(s: Series) -> Tuple[Literal['numeric', 'binary', 'categorical', 'datetime', 'text', 'empty'], int]",
+     "params": [
+      {
+       "name": "s",
+       "type": "Series",
+       "required": true
+      }
+     ],
+     "returns": "Tuple[Literal['numeric', 'binary', 'categorical', 'datetime', 'text', 'empty'], int]",
+     "doc": "Infer a ColumnKind and number of unique non-null values.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/io.py",
+      "line": 124,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/io.py#L124"
+     }
+    },
+    {
+     "name": "suggest_role",
+     "kind": "function",
+     "module": "propensity_lift.io",
+     "exported": false,
+     "signature": "(name: str, kind: Literal['numeric', 'binary', 'categorical', 'datetime', 'text', 'empty'], n_unique: int, n_rows: int) -> str",
+     "params": [
+      {
+       "name": "name",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "kind",
+       "type": "Literal['numeric', 'binary', 'categorical', 'datetime', 'text', 'empty']",
+       "required": true
+      },
+      {
+       "name": "n_unique",
+       "type": "int",
+       "required": true
+      },
+      {
+       "name": "n_rows",
+       "type": "int",
+       "required": true
+      }
+     ],
+     "returns": "str",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/io.py",
+      "line": 161,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/io.py#L161"
+     }
+    },
+    {
+     "name": "profile_column",
+     "kind": "function",
+     "module": "propensity_lift.io",
+     "exported": false,
+     "signature": "(s: Series, name: str, n_rows: int) -> propensity_lift.schemas.ColumnProfile",
+     "params": [
+      {
+       "name": "s",
+       "type": "Series",
+       "required": true
+      },
+      {
+       "name": "name",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "n_rows",
+       "type": "int",
+       "required": true
+      }
+     ],
+     "returns": "ColumnProfile",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/io.py",
+      "line": 203,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/io.py#L203"
+     }
+    },
+    {
+     "name": "profile_dataframe",
+     "kind": "function",
+     "module": "propensity_lift.io",
+     "exported": true,
+     "signature": "(df: DataFrame, dataset_id: str, filename: str, sheet_names: Optional[Sequence[str]] = None, sheet: Optional[str] = None) -> propensity_lift.schemas.DatasetProfile",
+     "params": [
+      {
+       "name": "df",
+       "type": "DataFrame",
+       "required": true
+      },
+      {
+       "name": "dataset_id",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "filename",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "sheet_names",
+       "type": "Optional[Sequence[str]]",
+       "required": false,
+       "default": "None"
+      },
+      {
+       "name": "sheet",
+       "type": "Optional[str]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "DatasetProfile",
+     "doc": "Profile every column of ``df``.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/io.py",
+      "line": 237,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/io.py#L237"
+     }
+    }
+   ],
+   "constants": [
+    {
+     "name": "TEXT_MIN_UNIQUE",
+     "type": "int",
+     "value": "50"
+    },
+    {
+     "name": "TEXT_UNIQUE_RATIO",
+     "type": "float",
+     "value": "0.1"
+    }
+   ],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/io.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/io.py"
+   }
+  },
+  {
+   "name": "sample_data",
+   "import": "propensity_lift.sample_data",
+   "role": "Synthetic sample data",
+   "doc": "Synthetic, realistic brand-lift survey data with confounded exposure.\n\nExposure (``group`` = \"Exposed\"/\"Control\", ~40% exposed) depends on age,\ngender, region, income, media usage, prior brand usage, device and ad\nblocking. The same factors drive the KPIs, so raw exposed-vs-control\ndifferences overstate the true effect. True exposure effects (latent scale):\n\n* aided_awareness   +0.45 log-odds\n* unaided_awareness  0 (NO effect: any raw lift is pure confounding)\n* favorability      +0.25 on the latent 1-5 scale\n* consideration     +0.35 log-odds\n* purchase_intent   +0.30 latent (ordered logit)\n* ad_recall         +0.90 log-odds",
+   "members": [
+    {
+     "name": "make_brand_lift_sample",
+     "kind": "function",
+     "module": "propensity_lift.sample_data",
+     "exported": true,
+     "signature": "(n: int = 3000, seed: int = 0) -> DataFrame",
+     "params": [
+      {
+       "name": "n",
+       "type": "int",
+       "required": false,
+       "default": "3000"
+      },
+      {
+       "name": "seed",
+       "type": "int",
+       "required": false,
+       "default": "0"
+      }
+     ],
+     "returns": "DataFrame",
+     "doc": "Generate a respondent-level brand-lift survey dataset (one row per respondent).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/sample_data.py",
+      "line": 64,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/sample_data.py#L64"
+     }
+    },
+    {
+     "name": "sample_analysis_config",
+     "kind": "function",
+     "module": "propensity_lift.sample_data",
+     "exported": false,
+     "signature": "(dataset_id: str = 'sample', **overrides)",
+     "params": [
+      {
+       "name": "dataset_id",
+       "type": "str",
+       "required": false,
+       "default": "\"sample\""
+      },
+      {
+       "name": "overrides",
+       "type": "",
+       "required": true
+      }
+     ],
+     "returns": "",
+     "doc": "An AnalysisConfig suited to :func:`make_brand_lift_sample` data (handy for demos/tests).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/sample_data.py",
+      "line": 243,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/sample_data.py#L243"
+     }
+    }
+   ],
+   "constants": [
+    {
+     "name": "TRUE_EFFECTS",
+     "type": "dict",
+     "value": "{\"aided_awareness\": 0.45, \"unaided_awareness\": 0.0, \"favorability\": 0.25, \"consideration\": 0.35, \"purchase_intent\": 0.3, \"ad_recall\": 0.9}"
+    },
+    {
+     "name": "PURCHASE_INTENT_LEVELS",
+     "type": "list",
+     "value": "[\"Definitely will not\", \"Probably will not\", \"Might or might not\", \"Probably will\", \"Definitely will\"]"
+    },
+    {
+     "name": "SAMPLE_MODEL_FEATURES",
+     "type": "list",
+     "value": "[\"age\", \"income_band\", \"education\", \"employment\", \"marital_status\", \"household_size\", \"children_in_household\", \"urbanicity\", \"ethnicity\", \"tv_hours_week\", \"social_media_hours_day\", \"streaming_hours_week\", \"radio_hours_week\", \"podcast_listener\", \"primary_device\", \"ad_blocker\", \"social_platforms_used\", \"prior_brand_usage\", \"category_purchase_freq\", \"household_income_k\"]"
+    },
+    {
+     "name": "SAMPLE_MATCHING_FEATURES",
+     "type": "list",
+     "value": "[\"age_band\", \"gender\", \"region\"]"
+    },
+    {
+     "name": "SAMPLE_OUTCOMES",
+     "type": "list",
+     "value": "[\"aided_awareness\", \"unaided_awareness\", \"favorability\", \"consideration\", \"purchase_intent\", \"ad_recall\"]"
+    },
+    {
+     "name": "SAMPLE_TOP2_BOX",
+     "type": "dict",
+     "value": "{\"purchase_intent\": [\"Definitely will\", \"Probably will\"]}"
+    }
+   ],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/sample_data.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/sample_data.py"
+   }
+  },
+  {
+   "name": "preprocess",
+   "import": "propensity_lift.preprocess",
+   "role": "Treatment, outcome and feature coding",
+   "doc": "Treatment coding, outcome recoding and feature encoding.",
+   "members": [
+    {
+     "name": "code_treatment",
+     "kind": "function",
+     "module": "propensity_lift.preprocess",
+     "exported": false,
+     "signature": "(s: Series, exposed_values: Sequence[Any], control_values: Optional[Sequence[Any]] = None) -> ndarray",
+     "params": [
+      {
+       "name": "s",
+       "type": "Series",
+       "required": true
+      },
+      {
+       "name": "exposed_values",
+       "type": "Sequence[Any]",
+       "required": true
+      },
+      {
+       "name": "control_values",
+       "type": "Optional[Sequence[Any]]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "Code a treatment column as 1 (exposed), 0 (control) or -1 (missing / neither).\n\nValues are compared robustly: ``1``, ``1.0``, ``\"1\"`` and ``True`` are equal;\nstrings are compared case-insensitively after stripping.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+      "line": 19,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py#L19"
+     }
+    },
+    {
+     "name": "OutcomeData",
+     "kind": "dataclass",
+     "doc": "",
+     "fields": [
+      {
+       "name": "name",
+       "type": "str",
+       "required": true,
+       "description": "",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "y",
+       "type": "ndarray",
+       "required": true,
+       "description": "float, nan where missing",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "outcome_type",
+       "type": "str",
+       "required": true,
+       "description": "\"binary\" | \"continuous\"",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "note",
+       "type": "Optional[str]",
+       "required": false,
+       "description": "",
+       "constraints": [],
+       "inherited": false,
+       "default": "None"
+      }
+     ],
+     "methods": [],
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+      "line": 63,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py#L63"
+     }
+    },
+    {
+     "name": "recode_outcome",
+     "kind": "function",
+     "module": "propensity_lift.preprocess",
+     "exported": false,
+     "signature": "(s: Series, name: str, positive_values: Optional[Sequence[Any]] = None) -> propensity_lift.preprocess.OutcomeData",
+     "params": [
+      {
+       "name": "s",
+       "type": "Series",
+       "required": true
+      },
+      {
+       "name": "name",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "positive_values",
+       "type": "Optional[Sequence[Any]]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "OutcomeData",
+     "doc": "Recode an outcome column to a float vector.\n\n* ``positive_values`` given -> 1 if value in list else 0 (missing stays missing)\n* values {0, 1} -> binary; two text labels -> binary when one is a known yes/no label (note says which)\n* any other numeric pair (e.g. SPSS 1=Yes/2=No) -> continuous with a note; set positive_values\n* numeric -> continuous\n* otherwise ValueError",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+      "line": 71,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py#L71"
+     }
+    },
+    {
+     "name": "EncodedFeatures",
+     "kind": "dataclass",
+     "doc": "",
+     "fields": [
+      {
+       "name": "X",
+       "type": "ndarray",
+       "required": true,
+       "description": "n x p float",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "names",
+       "type": "List[str]",
+       "required": true,
+       "description": "encoded variable names",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "sources",
+       "type": "List[str]",
+       "required": true,
+       "description": "source column per encoded variable",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "is_dummy",
+       "type": "List[bool]",
+       "required": true,
+       "description": "",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "warnings",
+       "type": "List[str]",
+       "required": false,
+       "description": "",
+       "constraints": [],
+       "inherited": false,
+       "default": "[]"
+      }
+     ],
+     "methods": [
+      {
+       "name": "subset",
+       "kind": "method",
+       "signature": "(self, sources: 'Sequence[str]') -> \"'EncodedFeatures'\"",
+       "doc": ""
+      }
+     ],
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+      "line": 177,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py#L177"
+     }
+    },
+    {
+     "name": "feature_numeric",
+     "kind": "function",
+     "module": "propensity_lift.preprocess",
+     "exported": false,
+     "signature": "(s: Series) -> Optional[ndarray]",
+     "params": [
+      {
+       "name": "s",
+       "type": "Series",
+       "required": true
+      }
+     ],
+     "returns": "Optional[ndarray]",
+     "doc": "Numeric representation of a feature column, or None if categorical.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+      "line": 193,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py#L193"
+     }
+    },
+    {
+     "name": "feature_missing_mask",
+     "kind": "function",
+     "module": "propensity_lift.preprocess",
+     "exported": false,
+     "signature": "(df: DataFrame, cols: Sequence[str]) -> ndarray",
+     "params": [
+      {
+       "name": "df",
+       "type": "DataFrame",
+       "required": true
+      },
+      {
+       "name": "cols",
+       "type": "Sequence[str]",
+       "required": true
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+      "line": 205,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py#L205"
+     }
+    },
+    {
+     "name": "categorical_labels",
+     "kind": "function",
+     "module": "propensity_lift.preprocess",
+     "exported": false,
+     "signature": "(s: Series) -> ndarray",
+     "params": [
+      {
+       "name": "s",
+       "type": "Series",
+       "required": true
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+      "line": 216,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py#L216"
+     }
+    },
+    {
+     "name": "encode_features",
+     "kind": "function",
+     "module": "propensity_lift.preprocess",
+     "exported": false,
+     "signature": "(df: DataFrame, features: Sequence[str], rare_threshold: float = 0.01, max_levels: int = 30) -> propensity_lift.preprocess.EncodedFeatures",
+     "params": [
+      {
+       "name": "df",
+       "type": "DataFrame",
+       "required": true
+      },
+      {
+       "name": "features",
+       "type": "Sequence[str]",
+       "required": true
+      },
+      {
+       "name": "rare_threshold",
+       "type": "float",
+       "required": false,
+       "default": "0.01"
+      },
+      {
+       "name": "max_levels",
+       "type": "int",
+       "required": false,
+       "default": "30"
+      }
+     ],
+     "returns": "EncodedFeatures",
+     "doc": "One-hot encode categoricals (rare levels pooled into ``__other__``), median-impute\nnumerics and add ``<col>__missing`` indicators when any value is missing.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+      "line": 237,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py#L237"
+     }
+    },
+    {
+     "name": "matching_strata",
+     "kind": "function",
+     "module": "propensity_lift.preprocess",
+     "exported": false,
+     "signature": "(df: DataFrame, features: Sequence[str]) -> Tuple[ndarray, int]",
+     "params": [
+      {
+       "name": "df",
+       "type": "DataFrame",
+       "required": true
+      },
+      {
+       "name": "features",
+       "type": "Sequence[str]",
+       "required": true
+      }
+     ],
+     "returns": "Tuple[ndarray, int]",
+     "doc": "Integer exact-match stratum per row. Numeric features with > 10 unique\nvalues are coarsened into quintiles. Returns (codes, n_strata).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+      "line": 293,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py#L293"
+     }
+    }
+   ],
+   "constants": [],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/preprocess.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/preprocess.py"
+   }
+  },
+  {
+   "name": "models",
+   "import": "propensity_lift.models",
+   "role": "Propensity score models",
+   "doc": "Propensity score models.",
+   "members": [
+    {
+     "name": "logit",
+     "kind": "function",
+     "module": "propensity_lift.models",
+     "exported": false,
+     "signature": "(p: ndarray) -> ndarray",
+     "params": [
+      {
+       "name": "p",
+       "type": "ndarray",
+       "required": true
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/models.py",
+      "line": 21,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/models.py#L21"
+     }
+    },
+    {
+     "name": "calibration_table",
+     "kind": "function",
+     "module": "propensity_lift.models",
+     "exported": false,
+     "signature": "(ps: ndarray, t: ndarray, n_bins: int = 10) -> List[List[float]]",
+     "params": [
+      {
+       "name": "ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "n_bins",
+       "type": "int",
+       "required": false,
+       "default": "10"
+      }
+     ],
+     "returns": "List[List[float]]",
+     "doc": "[[mean_pred, observed_rate, n], ...] by PS deciles.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/models.py",
+      "line": 26,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/models.py#L26"
+     }
+    },
+    {
+     "name": "fit_propensity",
+     "kind": "function",
+     "module": "propensity_lift.models",
+     "exported": false,
+     "signature": "(X: ndarray, t: ndarray, model_type: Literal['logistic', 'gradient_boosting', 'random_forest'] = 'logistic', random_state: int = 42, source_features: Optional[Sequence[str]] = None, ps_only: bool = False) -> Tuple[ndarray, Optional[propensity_lift.schemas.ModelSummary]]",
+     "params": [
+      {
+       "name": "X",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "model_type",
+       "type": "Literal['logistic', 'gradient_boosting', 'random_forest']",
+       "required": false,
+       "default": "\"logistic\""
+      },
+      {
+       "name": "random_state",
+       "type": "int",
+       "required": false,
+       "default": "42"
+      },
+      {
+       "name": "source_features",
+       "type": "Optional[Sequence[str]]",
+       "required": false,
+       "default": "None"
+      },
+      {
+       "name": "ps_only",
+       "type": "bool",
+       "required": false,
+       "default": "False"
+      }
+     ],
+     "returns": "Tuple[ndarray, Optional[ModelSummary]]",
+     "doc": "Fit P(exposed | X). Returns (ps, ModelSummary). ``t`` is 0/1.\n\n``ps_only=True`` skips the summary (AUC, importance, calibration) and returns\n``(ps, None)`` -- used for cheap refits inside bootstrap replicates.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/models.py",
+      "line": 67,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/models.py#L67"
+     }
+    }
+   ],
+   "constants": [
+    {
+     "name": "EPS",
+     "type": "float",
+     "value": "1e-06"
+    }
+   ],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/models.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/models.py"
+   }
+  },
+  {
+   "name": "overlap",
+   "import": "propensity_lift.overlap",
+   "role": "Overlap and common support",
+   "doc": "Over/underlap diagnostics on the propensity score and on raw features.",
+   "members": [
+    {
+     "name": "quantiles",
+     "kind": "function",
+     "module": "propensity_lift.overlap",
+     "exported": false,
+     "signature": "(x: ndarray) -> propensity_lift.schemas.Quantiles",
+     "params": [
+      {
+       "name": "x",
+       "type": "ndarray",
+       "required": true
+      }
+     ],
+     "returns": "Quantiles",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/overlap.py",
+      "line": 27,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/overlap.py#L27"
+     }
+    },
+    {
+     "name": "common_support",
+     "kind": "function",
+     "module": "propensity_lift.overlap",
+     "exported": false,
+     "signature": "(ps: ndarray, t: ndarray) -> Tuple[float, float]",
+     "params": [
+      {
+       "name": "ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      }
+     ],
+     "returns": "Tuple[float, float]",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/overlap.py",
+      "line": 39,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/overlap.py#L39"
+     }
+    },
+    {
+     "name": "trim_mask",
+     "kind": "function",
+     "module": "propensity_lift.overlap",
+     "exported": false,
+     "signature": "(ps: ndarray, t: ndarray, rule: Literal['none', 'common_support', 'crump']) -> ndarray",
+     "params": [
+      {
+       "name": "ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "rule",
+       "type": "Literal['none', 'common_support', 'crump']",
+       "required": true
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "Boolean mask of units KEPT under the trim rule.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/overlap.py",
+      "line": 47,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/overlap.py#L47"
+     }
+    },
+    {
+     "name": "region_counts",
+     "kind": "function",
+     "module": "propensity_lift.overlap",
+     "exported": false,
+     "signature": "(ps: ndarray, t: ndarray) -> List[propensity_lift.schemas.RegionCount]",
+     "params": [
+      {
+       "name": "ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      }
+     ],
+     "returns": "List[RegionCount]",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/overlap.py",
+      "line": 75,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/overlap.py#L75"
+     }
+    },
+    {
+     "name": "ps_overlap_summary",
+     "kind": "function",
+     "module": "propensity_lift.overlap",
+     "exported": false,
+     "signature": "(ps: ndarray, t: ndarray, trim: Literal['none', 'common_support', 'crump'] = 'none', bins: int = 40) -> propensity_lift.schemas.OverlapSummary",
+     "params": [
+      {
+       "name": "ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "trim",
+       "type": "Literal['none', 'common_support', 'crump']",
+       "required": false,
+       "default": "\"none\""
+      },
+      {
+       "name": "bins",
+       "type": "int",
+       "required": false,
+       "default": "40"
+      }
+     ],
+     "returns": "OverlapSummary",
+     "doc": "Propensity score over/underlap on the (pre-trim) sample.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/overlap.py",
+      "line": 98,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/overlap.py#L98"
+     }
+    },
+    {
+     "name": "feature_overlap",
+     "kind": "function",
+     "module": "propensity_lift.overlap",
+     "exported": false,
+     "signature": "(s: Series, t: ndarray, name: str, role: str, kind: Literal['numeric', 'binary', 'categorical', 'datetime', 'text', 'empty'], max_levels: int = 30, bins: int = 30) -> propensity_lift.schemas.FeatureOverlap",
+     "params": [
+      {
+       "name": "s",
+       "type": "Series",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "name",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "role",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "kind",
+       "type": "Literal['numeric', 'binary', 'categorical', 'datetime', 'text', 'empty']",
+       "required": true
+      },
+      {
+       "name": "max_levels",
+       "type": "int",
+       "required": false,
+       "default": "30"
+      },
+      {
+       "name": "bins",
+       "type": "int",
+       "required": false,
+       "default": "30"
+      }
+     ],
+     "returns": "FeatureOverlap",
+     "doc": "Raw-data over/underlap for one feature.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/overlap.py",
+      "line": 130,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/overlap.py#L130"
+     }
+    },
+    {
+     "name": "adjusted_ps_histogram",
+     "kind": "function",
+     "module": "propensity_lift.overlap",
+     "exported": false,
+     "signature": "(ps: ndarray, t: ndarray, w: ndarray, edges: Optional[ndarray] = None)",
+     "params": [
+      {
+       "name": "ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "w",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "edges",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/overlap.py",
+      "line": 197,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/overlap.py#L197"
+     }
+    }
+   ],
+   "constants": [
+    {
+     "name": "PS_BINS",
+     "type": "int",
+     "value": "40"
+    },
+    {
+     "name": "KDE_POINTS",
+     "type": "int",
+     "value": "128"
+    }
+   ],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/overlap.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/overlap.py"
+   }
+  },
+  {
+   "name": "matching",
+   "import": "propensity_lift.matching",
+   "role": "Nearest-neighbour matching",
+   "doc": "Greedy nearest-neighbour matching on logit(PS) with caliper, ratio,\nreplacement and exact-match strata.\n\nExact strata are handled by offsetting the matching distance of each stratum\nby a large constant, so a single sorted search can be used for all strata\nwhile never pairing units from different strata.",
+   "members": [
+    {
+     "name": "MatchPairs",
+     "kind": "dataclass",
+     "doc": "",
+     "fields": [
+      {
+       "name": "treated",
+       "type": "ndarray",
+       "required": true,
+       "description": "index (into input arrays) of the focal unit",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "control",
+       "type": "ndarray",
+       "required": true,
+       "description": "index of its matched counterpart",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "weight",
+       "type": "ndarray",
+       "required": true,
+       "description": "1 / (number of matches of the focal unit)",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "n_focal",
+       "type": "int",
+       "required": true,
+       "description": "",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "n_focal_matched",
+       "type": "int",
+       "required": true,
+       "description": "",
+       "constraints": [],
+       "inherited": false
+      }
+     ],
+     "methods": [],
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/matching.py",
+      "line": 21,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/matching.py#L21"
+     }
+    },
+    {
+     "name": "match_one_direction",
+     "kind": "function",
+     "module": "propensity_lift.matching",
+     "exported": false,
+     "signature": "(score: ndarray, focal: ndarray, pool: ndarray, caliper: Optional[float], ratio: int = 1, replacement: bool = True, strata: Optional[ndarray] = None) -> propensity_lift.matching.MatchPairs",
+     "params": [
+      {
+       "name": "score",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "focal",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "pool",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "caliper",
+       "type": "Optional[float]",
+       "required": true
+      },
+      {
+       "name": "ratio",
+       "type": "int",
+       "required": false,
+       "default": "1"
+      },
+      {
+       "name": "replacement",
+       "type": "bool",
+       "required": false,
+       "default": "True"
+      },
+      {
+       "name": "strata",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "MatchPairs",
+     "doc": "Match each focal unit (boolean mask ``focal``) to up to ``ratio`` units of\n``pool`` (boolean mask) by nearest ``score`` within ``caliper`` (absolute,\nsame scale as score) and within identical ``strata``.\n\nWith replacement, pool units tied with the ``ratio``-th nearest distance are\nall used and share the focal unit's weight (so a focal unit may get more than\n``ratio`` matches, each weighted 1/n_matches).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/matching.py",
+      "line": 80,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/matching.py#L80"
+     }
+    },
+    {
+     "name": "MatchResult",
+     "kind": "dataclass",
+     "doc": "",
+     "fields": [
+      {
+       "name": "weights",
+       "type": "ndarray",
+       "required": true,
+       "description": "unnormalised: exposed 1 if matched; control sum of 1/k",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "n_exposed_matched",
+       "type": "int",
+       "required": true,
+       "description": "",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "n_exposed_unmatched",
+       "type": "int",
+       "required": true,
+       "description": "",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "n_unique_controls_used",
+       "type": "int",
+       "required": true,
+       "description": "",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "n_control_matched",
+       "type": "int",
+       "required": false,
+       "description": "ATE: controls with an exposed counterpart",
+       "constraints": [],
+       "inherited": false,
+       "default": "0"
+      }
+     ],
+     "methods": [],
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/matching.py",
+      "line": 212,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/matching.py#L212"
+     }
+    },
+    {
+     "name": "nn_match",
+     "kind": "function",
+     "module": "propensity_lift.matching",
+     "exported": false,
+     "signature": "(logit_ps: ndarray, t: ndarray, caliper_abs: Optional[float], ratio: int = 1, replacement: bool = True, strata: Optional[ndarray] = None, estimand: str = 'ATT') -> propensity_lift.matching.MatchResult",
+     "params": [
+      {
+       "name": "logit_ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "caliper_abs",
+       "type": "Optional[float]",
+       "required": true
+      },
+      {
+       "name": "ratio",
+       "type": "int",
+       "required": false,
+       "default": "1"
+      },
+      {
+       "name": "replacement",
+       "type": "bool",
+       "required": false,
+       "default": "True"
+      },
+      {
+       "name": "strata",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "default": "None"
+      },
+      {
+       "name": "estimand",
+       "type": "str",
+       "required": false,
+       "default": "\"ATT\""
+      }
+     ],
+     "returns": "MatchResult",
+     "doc": "Nearest-neighbour matching producing analysis weights.\n\nATT: exposed weight 1 (if matched), control weight = sum over the exposed it\nserves of 1/k (k = matches of that exposed unit; = times used / ratio).\nATE: matched in both directions; each unit's weight = 1 (if it found a\ncounterpart) + its usage as a counterpart.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/matching.py",
+      "line": 221,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/matching.py#L221"
+     }
+    }
+   ],
+   "constants": [],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/matching.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/matching.py"
+   }
+  },
+  {
+   "name": "weighting",
+   "import": "propensity_lift.weighting",
+   "role": "Weights and effective sample size",
+   "doc": "Propensity-score weights: IPW (ATT/ATE), overlap weights, stratification.",
+   "members": [
+    {
+     "name": "ipw_weights",
+     "kind": "function",
+     "module": "propensity_lift.weighting",
+     "exported": false,
+     "signature": "(ps: ndarray, t: ndarray, estimand: str = 'ATT') -> ndarray",
+     "params": [
+      {
+       "name": "ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "estimand",
+       "type": "str",
+       "required": false,
+       "default": "\"ATT\""
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "ATT: exposed 1, control e/(1-e).  ATE: exposed 1/e, control 1/(1-e).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/weighting.py",
+      "line": 12,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/weighting.py#L12"
+     }
+    },
+    {
+     "name": "overlap_weights",
+     "kind": "function",
+     "module": "propensity_lift.weighting",
+     "exported": false,
+     "signature": "(ps: ndarray, t: ndarray) -> ndarray",
+     "params": [
+      {
+       "name": "ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "Overlap (ATO) weights: exposed 1-e, control e.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/weighting.py",
+      "line": 21,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/weighting.py#L21"
+     }
+    },
+    {
+     "name": "stratification_weights",
+     "kind": "function",
+     "module": "propensity_lift.weighting",
+     "exported": false,
+     "signature": "(ps: ndarray, t: ndarray, n_strata: int = 5, estimand: str = 'ATT') -> Tuple[ndarray, int]",
+     "params": [
+      {
+       "name": "ps",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "n_strata",
+       "type": "int",
+       "required": false,
+       "default": "5"
+      },
+      {
+       "name": "estimand",
+       "type": "str",
+       "required": false,
+       "default": "\"ATT\""
+      }
+     ],
+     "returns": "Tuple[ndarray, int]",
+     "doc": "PS-quantile strata (exposed quantiles for ATT, all units for ATE).\n\nATT: exposed 1, control n_e,s / n_c,s.  ATE: exposed n_s / n_e,s, control n_s / n_c,s.\nUnits in strata lacking either group get weight 0. Returns (weights, n_empty_strata).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/weighting.py",
+      "line": 28,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/weighting.py#L28"
+     }
+    },
+    {
+     "name": "clip_weights",
+     "kind": "function",
+     "module": "propensity_lift.weighting",
+     "exported": false,
+     "signature": "(w: ndarray, t: ndarray, quantile: Optional[float]) -> Tuple[ndarray, int]",
+     "params": [
+      {
+       "name": "w",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "quantile",
+       "type": "Optional[float]",
+       "required": true
+      }
+     ],
+     "returns": "Tuple[ndarray, int]",
+     "doc": "Cap weights at the ``quantile`` of their group (groups with constant weights untouched).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/weighting.py",
+      "line": 59,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/weighting.py#L59"
+     }
+    },
+    {
+     "name": "normalize_within_group",
+     "kind": "function",
+     "module": "propensity_lift.weighting",
+     "exported": false,
+     "signature": "(w: ndarray, t: ndarray) -> ndarray",
+     "params": [
+      {
+       "name": "w",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "Scale weights so each group's weights sum to its number of units.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/weighting.py",
+      "line": 79,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/weighting.py#L79"
+     }
+    },
+    {
+     "name": "kish_ess",
+     "kind": "function",
+     "module": "propensity_lift.weighting",
+     "exported": false,
+     "signature": "(w: ndarray) -> float",
+     "params": [
+      {
+       "name": "w",
+       "type": "ndarray",
+       "required": true
+      }
+     ],
+     "returns": "float",
+     "doc": "Kish effective sample size (sum w)^2 / sum w^2.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/weighting.py",
+      "line": 90,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/weighting.py#L90"
+     }
+    }
+   ],
+   "constants": [
+    {
+     "name": "EPS",
+     "type": "float",
+     "value": "1e-06"
+    }
+   ],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/weighting.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/weighting.py"
+   }
+  },
+  {
+   "name": "doubly_robust",
+   "import": "propensity_lift.doubly_robust",
+   "role": "Doubly robust (AIPW) estimation",
+   "doc": "Doubly robust (AIPW) estimation: an outcome regression plus an IPW correction of its residuals.\n\nFor each arm ``a`` an outcome model ``m_a(x) = E[Y | X = x, T = a]`` is fitted on that arm, then\n\n    mu_a = mean over the target population of m_a(X)  +  IPW-weighted mean over arm ``a`` of (Y - m_a(X))\n\nand lift = mu_1 - mu_0. The estimate is consistent when EITHER the propensity model or the outcome\nmodel is correctly specified. The target population is everyone for the ATE and the exposed for the\nATT; with ATT weights (exposed = 1) the exposed-arm model cancels, so ``mu_1`` is the observed\nexposed mean and only ``m_0`` has to be fitted.\n\nLike lift.py, everything is computed for K outcomes and G row-groups at once.",
+   "members": [
+    {
+     "name": "AipwEstimate",
+     "kind": "dataclass",
+     "doc": "",
+     "fields": [
+      {
+       "name": "exposed_mean",
+       "type": "ndarray",
+       "required": true,
+       "description": "G x K  mu_1",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "control_mean",
+       "type": "ndarray",
+       "required": true,
+       "description": "G x K  mu_0",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "se",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "description": "G x K  influence-function SE of the lift (with_se=True)",
+       "constraints": [],
+       "inherited": false,
+       "default": "None"
+      }
+     ],
+     "methods": [
+      {
+       "name": "lift",
+       "kind": "property",
+       "doc": ""
+      }
+     ],
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/doubly_robust.py",
+      "line": 27,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/doubly_robust.py#L27"
+     }
+    },
+    {
+     "name": "fit_outcome_models",
+     "kind": "function",
+     "module": "propensity_lift.doubly_robust",
+     "exported": false,
+     "signature": "(X: ndarray, Y: ndarray, M: ndarray, t: ndarray, binary: Sequence[bool], sample_weight: ndarray, arms: Sequence[int] = (0, 1)) -> Tuple[ndarray, ndarray]",
+     "params": [
+      {
+       "name": "X",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "Y",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "M",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "binary",
+       "type": "Sequence[bool]",
+       "required": true
+      },
+      {
+       "name": "sample_weight",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "arms",
+       "type": "Sequence[int]",
+       "required": false,
+       "default": "(0, 1)"
+      }
+     ],
+     "returns": "Tuple[ndarray, ndarray]",
+     "doc": "Per-arm outcome regressions on ``X``: logistic for binary outcomes, linear otherwise.\n\nReturns ``(m0, m1)``, both n x K: the predicted outcome of EVERY row under control / exposure.\n``sample_weight`` (n,) selects and weights the rows used for fitting (0 = not used, bootstrap\nmultiplicities otherwise); rows with a missing outcome (``M == 0``) are never used. An arm that\nis not in ``arms`` is returned as zeros.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/doubly_robust.py",
+      "line": 86,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/doubly_robust.py#L86"
+     }
+    },
+    {
+     "name": "aipw_estimate",
+     "kind": "function",
+     "module": "propensity_lift.doubly_robust",
+     "exported": false,
+     "signature": "(w: ndarray, q: ndarray, t: ndarray, D: ndarray, Y: ndarray, M: ndarray, m0: ndarray, m1: ndarray, with_se: bool = False) -> propensity_lift.doubly_robust.AipwEstimate",
+     "params": [
+      {
+       "name": "w",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "q",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "D",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "Y",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "M",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "m0",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "m1",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "with_se",
+       "type": "bool",
+       "required": false,
+       "default": "False"
+      }
+     ],
+     "returns": "AipwEstimate",
+     "doc": "Augmented IPW means for weights ``w`` (IPW weights, 0 for rows left out) and target weights ``q``.\n\n``q`` (n,) defines the population the outcome-model predictions are averaged over: 1 for every\nanalysed row (ATE) or for the analysed exposed rows only (ATT), times any bootstrap multiplicity.\nWeights are self-normalised (Hajek), so ``w`` and ``q`` need no particular scale.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/doubly_robust.py",
+      "line": 120,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/doubly_robust.py#L120"
+     }
+    }
+   ],
+   "constants": [
+    {
+     "name": "RIDGE",
+     "type": "float",
+     "value": "1.0"
+    }
+   ],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/doubly_robust.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/doubly_robust.py"
+   }
+  },
+  {
+   "name": "diagnostics",
+   "import": "propensity_lift.diagnostics",
+   "role": "Covariate balance",
+   "doc": "Covariate balance diagnostics (standardised mean differences, variance ratios).",
+   "members": [
+    {
+     "name": "weighted_mean_var",
+     "kind": "function",
+     "module": "propensity_lift.diagnostics",
+     "exported": false,
+     "signature": "(X: ndarray, w: Optional[ndarray] = None) -> Tuple[ndarray, ndarray]",
+     "params": [
+      {
+       "name": "X",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "w",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "Tuple[ndarray, ndarray]",
+     "doc": "Column-wise weighted mean and (population) variance sum w (x-mu)^2 / sum w.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/diagnostics.py",
+      "line": 15,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/diagnostics.py#L15"
+     }
+    },
+    {
+     "name": "smd",
+     "kind": "function",
+     "module": "propensity_lift.diagnostics",
+     "exported": false,
+     "signature": "(x_e: ndarray, x_c: ndarray, w_e: Optional[ndarray] = None, w_c: Optional[ndarray] = None, pooled_sd: Optional[float] = None) -> float",
+     "params": [
+      {
+       "name": "x_e",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "x_c",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "w_e",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "default": "None"
+      },
+      {
+       "name": "w_c",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "default": "None"
+      },
+      {
+       "name": "pooled_sd",
+       "type": "Optional[float]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "float",
+     "doc": "(mean_e - mean_c) / sqrt((var_e + var_c)/2). ``pooled_sd`` overrides the denominator\n(used to keep the unadjusted denominator after adjustment).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/diagnostics.py",
+      "line": 32,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/diagnostics.py#L32"
+     }
+    },
+    {
+     "name": "balance_table",
+     "kind": "function",
+     "module": "propensity_lift.diagnostics",
+     "exported": false,
+     "signature": "(X: ndarray, t: ndarray, w_after: ndarray, names: Sequence[str], sources: Sequence[str], is_dummy: Sequence[bool], roles: Dict[str, str], before_mask: Optional[ndarray] = None) -> Tuple[List[propensity_lift.schemas.BalanceRow], propensity_lift.schemas.BalanceSummary]",
+     "params": [
+      {
+       "name": "X",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "w_after",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "names",
+       "type": "Sequence[str]",
+       "required": true
+      },
+      {
+       "name": "sources",
+       "type": "Sequence[str]",
+       "required": true
+      },
+      {
+       "name": "is_dummy",
+       "type": "Sequence[bool]",
+       "required": true
+      },
+      {
+       "name": "roles",
+       "type": "Dict[str, str]",
+       "required": true
+      },
+      {
+       "name": "before_mask",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "Tuple[List[BalanceRow], BalanceSummary]",
+     "doc": "Balance before (unweighted, rows in ``before_mask``) and after (``w_after``).\n\nSMD denominators use the unadjusted pooled SD for both before and after.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/diagnostics.py",
+      "line": 49,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/diagnostics.py#L49"
+     }
+    },
+    {
+     "name": "summarize_balance",
+     "kind": "function",
+     "module": "propensity_lift.diagnostics",
+     "exported": false,
+     "signature": "(rows: Sequence[propensity_lift.schemas.BalanceRow]) -> propensity_lift.schemas.BalanceSummary",
+     "params": [
+      {
+       "name": "rows",
+       "type": "Sequence[BalanceRow]",
+       "required": true
+      }
+     ],
+     "returns": "BalanceSummary",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/diagnostics.py",
+      "line": 101,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/diagnostics.py#L101"
+     }
+    }
+   ],
+   "constants": [
+    {
+     "name": "SMD_THRESHOLD",
+     "type": "float",
+     "value": "0.1"
+    }
+   ],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/diagnostics.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/diagnostics.py"
+   }
+  },
+  {
+   "name": "lift",
+   "import": "propensity_lift.lift",
+   "role": "Lift, standard errors and intervals",
+   "doc": "Outcome contrasts: weighted means, absolute / relative lift, SEs, CIs, p-values.\n\nEverything is computed for many outcomes (K) and many row-groups (G: the full\nsample plus each subgroup level) at once with matrix products, so bootstrap\nreplicates are cheap: per replicate we only need the replicate weights.",
+   "members": [
+    {
+     "name": "Sums",
+     "kind": "dataclass",
+     "doc": "",
+     "fields": [
+      {
+       "name": "sw",
+       "type": "ndarray",
+       "required": true,
+       "description": "G x K  sum of weights over valid rows",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "swy",
+       "type": "ndarray",
+       "required": true,
+       "description": "G x K  sum w*y",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "swy2",
+       "type": "ndarray",
+       "required": true,
+       "description": "G x K  sum w*y^2",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "sw2",
+       "type": "ndarray",
+       "required": true,
+       "description": "G x K  sum w^2",
+       "constraints": [],
+       "inherited": false
+      },
+      {
+       "name": "cnt",
+       "type": "ndarray",
+       "required": true,
+       "description": "G x K  number of valid rows with w > 0",
+       "constraints": [],
+       "inherited": false
+      }
+     ],
+     "methods": [
+      {
+       "name": "ess",
+       "kind": "method",
+       "signature": "(self) -> 'np.ndarray'",
+       "doc": ""
+      },
+      {
+       "name": "mean",
+       "kind": "method",
+       "signature": "(self) -> 'np.ndarray'",
+       "doc": ""
+      },
+      {
+       "name": "var",
+       "kind": "method",
+       "signature": "(self) -> 'np.ndarray'",
+       "doc": "Weighted (population) variance."
+      }
+     ],
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 20,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L20"
+     }
+    },
+    {
+     "name": "outcome_matrix",
+     "kind": "function",
+     "module": "propensity_lift.lift",
+     "exported": false,
+     "signature": "(ys: Sequence[ndarray])",
+     "params": [
+      {
+       "name": "ys",
+       "type": "Sequence[ndarray]",
+       "required": true
+      }
+     ],
+     "returns": "",
+     "doc": "Stack outcome vectors -> (Y with 0 for missing, M validity mask) both n x K.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 44,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L44"
+     }
+    },
+    {
+     "name": "group_sums",
+     "kind": "function",
+     "module": "propensity_lift.lift",
+     "exported": false,
+     "signature": "(w: ndarray, D: ndarray, Y: ndarray, M: ndarray, full: bool = True) -> propensity_lift.lift.Sums",
+     "params": [
+      {
+       "name": "w",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "D",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "Y",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "M",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "full",
+       "type": "bool",
+       "required": false,
+       "default": "True"
+      }
+     ],
+     "returns": "Sums",
+     "doc": "Sums for one treatment group: ``w`` already zero outside the group.\nD: n x G group-membership matrix (0/1).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 52,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L52"
+     }
+    },
+    {
+     "name": "lift_only",
+     "kind": "function",
+     "module": "propensity_lift.lift",
+     "exported": false,
+     "signature": "(w: ndarray, t: ndarray, D: ndarray, Y: ndarray, M: ndarray) -> ndarray",
+     "params": [
+      {
+       "name": "w",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "D",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "Y",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "M",
+       "type": "ndarray",
+       "required": true
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "G x K lift (weighted exposed mean - weighted control mean) for weights ``w``.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 68,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L68"
+     }
+    },
+    {
+     "name": "analytic_se",
+     "kind": "function",
+     "module": "propensity_lift.lift",
+     "exported": false,
+     "signature": "(e: propensity_lift.lift.Sums, c: propensity_lift.lift.Sums) -> ndarray",
+     "params": [
+      {
+       "name": "e",
+       "type": "Sums",
+       "required": true
+      },
+      {
+       "name": "c",
+       "type": "Sums",
+       "required": true
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "SE of a difference of weighted means: sqrt(var_e/ESS_e + var_c/ESS_c).",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 76,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L76"
+     }
+    },
+    {
+     "name": "bootstrap_se",
+     "kind": "function",
+     "module": "propensity_lift.lift",
+     "exported": false,
+     "signature": "(boot_lifts: ndarray) -> ndarray",
+     "params": [
+      {
+       "name": "boot_lifts",
+       "type": "ndarray",
+       "required": true
+      }
+     ],
+     "returns": "ndarray",
+     "doc": "SD over replicates (axis 0), ignoring non-finite replicates; nan if < 2 valid.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 84,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L84"
+     }
+    },
+    {
+     "name": "p_value",
+     "kind": "function",
+     "module": "propensity_lift.lift",
+     "exported": false,
+     "signature": "(lift: float, se: float) -> float",
+     "params": [
+      {
+       "name": "lift",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "se",
+       "type": "float",
+       "required": true
+      }
+     ],
+     "returns": "float",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 96,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L96"
+     }
+    },
+    {
+     "name": "normal_ci",
+     "kind": "function",
+     "module": "propensity_lift.lift",
+     "exported": false,
+     "signature": "(lift: float, se: float, alpha: float)",
+     "params": [
+      {
+       "name": "lift",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "se",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "alpha",
+       "type": "float",
+       "required": true
+      }
+     ],
+     "returns": "",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 104,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L104"
+     }
+    },
+    {
+     "name": "contrast_fields",
+     "kind": "function",
+     "module": "propensity_lift.lift",
+     "exported": false,
+     "signature": "(*, outcome: str, outcome_type: str, exposed_mean: float, control_mean_raw: float, raw_exposed_mean: float, control_mean_adjusted: float, n_exposed: int, n_control: int, effective_n_control: float, se: float, ci_method: str, alpha: float, warn: Optional[Callable[[str], NoneType]] = None) -> dict",
+     "params": [
+      {
+       "name": "outcome",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "outcome_type",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "exposed_mean",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "control_mean_raw",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "raw_exposed_mean",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "control_mean_adjusted",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "n_exposed",
+       "type": "int",
+       "required": true
+      },
+      {
+       "name": "n_control",
+       "type": "int",
+       "required": true
+      },
+      {
+       "name": "effective_n_control",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "se",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "ci_method",
+       "type": "str",
+       "required": true
+      },
+      {
+       "name": "alpha",
+       "type": "float",
+       "required": true
+      },
+      {
+       "name": "warn",
+       "type": "Optional[Callable[[<class 'str'>], None]]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "dict",
+     "doc": "Assemble a JSON-safe dict of OutcomeContrast fields.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 109,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L109"
+     }
+    },
+    {
+     "name": "weighted_lift",
+     "kind": "function",
+     "module": "propensity_lift.lift",
+     "exported": false,
+     "signature": "(y: ndarray, t: ndarray, w: Optional[ndarray] = None, alpha: float = 0.05) -> dict",
+     "params": [
+      {
+       "name": "y",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "t",
+       "type": "ndarray",
+       "required": true
+      },
+      {
+       "name": "w",
+       "type": "Optional[ndarray]",
+       "required": false,
+       "default": "None"
+      },
+      {
+       "name": "alpha",
+       "type": "float",
+       "required": false,
+       "default": "0.05"
+      }
+     ],
+     "returns": "dict",
+     "doc": "Weighted difference of means with analytic SE / CI / p-value.",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+      "line": 169,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py#L169"
+     }
+    }
+   ],
+   "constants": [],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/lift.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/lift.py"
+   }
+  },
+  {
+   "name": "cli",
+   "import": "propensity_lift.cli",
+   "role": "Command line entry point",
+   "doc": "Command line interface: ``propensity-lift profile|run``.",
+   "members": [
+    {
+     "name": "main",
+     "kind": "function",
+     "module": "propensity_lift.cli",
+     "exported": false,
+     "signature": "(argv: Optional[List[str]] = None) -> int",
+     "params": [
+      {
+       "name": "argv",
+       "type": "Optional[List[str]]",
+       "required": false,
+       "default": "None"
+      }
+     ],
+     "returns": "int",
+     "doc": "",
+     "source": {
+      "path": "packages/propensity_lift/src/propensity_lift/cli.py",
+      "line": 20,
+      "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/cli.py#L20"
+     }
+    }
+   ],
+   "constants": [],
+   "source": {
+    "path": "packages/propensity_lift/src/propensity_lift/cli.py",
+    "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/cli.py"
+   }
+  }
+ ],
+ "schemas": {
+  "doc": "Shared data contracts for propensity_lift.\n\nThis module is the SINGLE SOURCE OF TRUTH for the shapes exchanged between\nthe analysis package, the FastAPI backend and the React frontend\n(frontend/src/api/types.ts mirrors these models 1:1, snake_case preserved).\n\nTerminology\n-----------\n* exposed / control  : the two respondent groups, read from ``treatment_column``.\n* model_features     : covariates fed to the propensity-score model.\n* matching_features  : columns the respondents were (or should be) matched on.\n                       Used as EXACT-MATCH strata for nearest-neighbour matching,\n                       and always reported in balance / overlap diagnostics.\n                       Numeric matching features with > 10 unique values are\n                       coarsened into quintiles before exact matching.\n* outcome_columns    : brand-lift KPIs (awareness, favourability, consideration,\n                       purchase intent ...). Binary outcomes are reported as\n                       proportions; others as means.\n* overlap / underlap : on the propensity-score scale (and per feature), the\n                       region where BOTH groups have support is the overlap;\n                       regions where only one group has support are underlap\n                       (\"exposed_only\" = exposed respondents with no comparable\n                       controls, \"control_only\" = controls unlike any exposed).",
+  "groups": [
+   {
+    "title": "Configuration",
+    "models": [
+     {
+      "name": "AnalysisConfig",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "dataset_id",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "sheet",
+        "type": "Optional[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "name",
+        "type": "Optional[str]",
+        "required": false,
+        "description": "user label for the run",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "treatment_column",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "exposed_values",
+        "type": "List[str | int | float | bool]",
+        "required": true,
+        "description": "values meaning \"exposed\"",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "control_values",
+        "type": "Optional[List[str | int | float | bool]]",
+        "required": false,
+        "description": "None => every other non-missing value is control",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "outcome_columns",
+        "type": "List[str]",
+        "required": true,
+        "description": "",
+        "constraints": [
+         "min_length=1"
+        ],
+        "inherited": false
+       },
+       {
+        "name": "outcome_positive_values",
+        "type": "Dict[str, List[str | int | float | bool]]",
+        "required": false,
+        "description": "Optional recode of outcomes to binary, e.g. top-2-box: {\"purchase_intent\": [\"Very likely\", \"Somewhat likely\"]} -> 1 if in list else 0",
+        "constraints": [],
+        "inherited": false,
+        "default": "{}"
+       },
+       {
+        "name": "model_features",
+        "type": "List[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       },
+       {
+        "name": "matching_features",
+        "type": "List[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       },
+       {
+        "name": "include_matching_in_model",
+        "type": "bool",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "True"
+       },
+       {
+        "name": "subgroup_columns",
+        "type": "List[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       },
+       {
+        "name": "model_type",
+        "type": "Literal['logistic', 'gradient_boosting', 'random_forest']",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "\"logistic\""
+       },
+       {
+        "name": "methods",
+        "type": "List[Literal['nn_matching', 'ipw', 'overlap_weights', 'stratification', 'aipw']]",
+        "required": false,
+        "description": "",
+        "constraints": [
+         "min_length=1"
+        ],
+        "inherited": false,
+        "default": "['nn_matching', 'ipw']"
+       },
+       {
+        "name": "estimand",
+        "type": "Literal['ATT', 'ATE']",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "\"ATT\""
+       },
+       {
+        "name": "caliper",
+        "type": "Optional[float]",
+        "required": false,
+        "description": "matching in SDs of logit(PS); None = no caliper",
+        "constraints": [],
+        "inherited": false,
+        "default": "0.2"
+       },
+       {
+        "name": "match_ratio",
+        "type": "int",
+        "required": false,
+        "description": "controls per exposed",
+        "constraints": [
+         "ge=1",
+         "le=10"
+        ],
+        "inherited": false,
+        "default": "1"
+       },
+       {
+        "name": "replacement",
+        "type": "bool",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "True"
+       },
+       {
+        "name": "weight_clip",
+        "type": "Optional[float]",
+        "required": false,
+        "description": "weighting opt-in cap on IPW / AIPW weights at this per-group quantile (0.99 = p99); None = no clipping (unbiased)",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "n_strata",
+        "type": "int",
+        "required": false,
+        "description": "for stratification",
+        "constraints": [
+         "ge=2",
+         "le=20"
+        ],
+        "inherited": false,
+        "default": "5"
+       },
+       {
+        "name": "trim",
+        "type": "Literal['none', 'common_support', 'crump']",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "\"none\""
+       },
+       {
+        "name": "missing_strategy",
+        "type": "Literal['impute', 'drop']",
+        "required": false,
+        "description": "for features; rows with missing outcome are dropped per-outcome",
+        "constraints": [],
+        "inherited": false,
+        "default": "\"impute\""
+       },
+       {
+        "name": "n_bootstrap",
+        "type": "int",
+        "required": false,
+        "description": "0 => analytic SEs only",
+        "constraints": [
+         "ge=0",
+         "le=2000"
+        ],
+        "inherited": false,
+        "default": "200"
+       },
+       {
+        "name": "alpha",
+        "type": "float",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "0.05"
+       },
+       {
+        "name": "random_state",
+        "type": "int",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "42"
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 80,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L80"
+      }
+     }
+    ]
+   },
+   {
+    "title": "Dataset profile",
+    "models": [
+     {
+      "name": "DatasetProfile",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "dataset_id",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "filename",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "sheet_names",
+        "type": "List[str]",
+        "required": true,
+        "description": "[] for CSV",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "sheet",
+        "type": "Optional[str]",
+        "required": true,
+        "description": "sheet that was profiled",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_rows",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_cols",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "columns",
+        "type": "List[ColumnProfile]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 67,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L67"
+      }
+     },
+     {
+      "name": "ColumnProfile",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "name",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "kind",
+        "type": "Literal['numeric', 'binary', 'categorical', 'datetime', 'text', 'empty']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_missing",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_unique",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "top_values",
+        "type": "List[ValueCount]",
+        "required": false,
+        "description": "up to 20, most frequent first",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       },
+       {
+        "name": "min",
+        "type": "Optional[float]",
+        "required": false,
+        "description": "numeric only",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "max",
+        "type": "Optional[float]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "mean",
+        "type": "Optional[float]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "suggested_role",
+        "type": "Optional[Literal['treatment', 'outcome', 'model_feature', 'matching_feature', 'id', 'ignore']]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 53,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L53"
+      }
+     },
+     {
+      "name": "ValueCount",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "value",
+        "type": "str | int | float | bool",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "count",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 48,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L48"
+      }
+     }
+    ]
+   },
+   {
+    "title": "Analysis result",
+    "models": [
+     {
+      "name": "AnalysisResult",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "analysis_id",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "config",
+        "type": "AnalysisConfig",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "created_at",
+        "type": "datetime",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "duration_seconds",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "sample",
+        "type": "SampleSummary",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "model",
+        "type": "ModelSummary",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "overlap",
+        "type": "OverlapSummary",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "feature_overlap",
+        "type": "List[FeatureOverlap]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "methods",
+        "type": "List[MethodResult]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "warnings",
+        "type": "List[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 299,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L299"
+      }
+     },
+     {
+      "name": "SampleSummary",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "n_rows_input",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_exposed",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_control",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_dropped_treatment_missing",
+        "type": "int",
+        "required": true,
+        "description": "treatment value missing / in neither group",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_dropped_feature_missing",
+        "type": "int",
+        "required": true,
+        "description": "only when missing_strategy == \"drop\"",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_analysed_exposed",
+        "type": "int",
+        "required": true,
+        "description": "after trimming",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_analysed_control",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 289,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L289"
+      }
+     },
+     {
+      "name": "ModelSummary",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "model_type",
+        "type": "Literal['logistic', 'gradient_boosting', 'random_forest']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "auc",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_encoded_features",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "feature_importance",
+        "type": "List[FeatureImportance]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "calibration",
+        "type": "List[List[float]]",
+        "required": false,
+        "description": "[[mean_pred, observed_rate, n], ...] deciles",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 200,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L200"
+      }
+     },
+     {
+      "name": "FeatureImportance",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "feature",
+        "type": "str",
+        "required": true,
+        "description": "source column name (encoded dummies are aggregated back)",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "importance",
+        "type": "float",
+        "required": true,
+        "description": "abs standardized coef (logistic) or impurity importance, normalised to sum 1",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 195,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L195"
+      }
+     }
+    ]
+   },
+   {
+    "title": "Overlap",
+    "models": [
+     {
+      "name": "OverlapSummary",
+      "kind": "model",
+      "doc": "Propensity-score over/underlap (computed on the pre-trim sample).",
+      "bases": [],
+      "fields": [
+       {
+        "name": "histogram",
+        "type": "Histogram",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "density",
+        "type": "DensityCurve",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "exposed_quantiles",
+        "type": "Quantiles",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "control_quantiles",
+        "type": "Quantiles",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "common_support_lower",
+        "type": "float",
+        "required": true,
+        "description": "max(min_exposed, min_control)",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "common_support_upper",
+        "type": "float",
+        "required": true,
+        "description": "min(max_exposed, max_control)",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "regions",
+        "type": "List[RegionCount]",
+        "required": true,
+        "description": "always 3 rows: control_only, both, exposed_only",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "overlap_coefficient",
+        "type": "float",
+        "required": true,
+        "description": "OVL in [0,1], integral of min(densities)",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_trimmed_exposed",
+        "type": "int",
+        "required": true,
+        "description": "removed by the trim rule (0 if trim == \"none\")",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_trimmed_control",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 157,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L157"
+      }
+     },
+     {
+      "name": "RegionCount",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "region",
+        "type": "Literal['control_only', 'both', 'exposed_only']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "lower",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "upper",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_exposed",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_control",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "pct_exposed",
+        "type": "float",
+        "required": true,
+        "description": "0-100, share of the exposed group in this region",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "pct_control",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 147,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L147"
+      }
+     },
+     {
+      "name": "Histogram",
+      "kind": "model",
+      "doc": "Shared bin edges; counts and densities per group (len(edges) == len(counts)+1).",
+      "bases": [],
+      "fields": [
+       {
+        "name": "edges",
+        "type": "List[float]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "exposed_counts",
+        "type": "List[int]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "control_counts",
+        "type": "List[int]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "exposed_density",
+        "type": "List[float]",
+        "required": true,
+        "description": "counts / (n * bin_width)",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "control_density",
+        "type": "List[float]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 132,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L132"
+      }
+     },
+     {
+      "name": "DensityCurve",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "x",
+        "type": "List[float]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "exposed",
+        "type": "List[float]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "control",
+        "type": "List[float]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 141,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L141"
+      }
+     },
+     {
+      "name": "Quantiles",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "min",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "p05",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "p25",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "median",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "p75",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "p95",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "max",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "mean",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 121,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L121"
+      }
+     },
+     {
+      "name": "FeatureOverlap",
+      "kind": "model",
+      "doc": "Raw-data over/underlap for one model or matching feature.",
+      "bases": [],
+      "fields": [
+       {
+        "name": "feature",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "role",
+        "type": "Literal['model', 'matching', 'both']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "kind",
+        "type": "Literal['numeric', 'binary', 'categorical', 'datetime', 'text', 'empty']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "overlap_coefficient",
+        "type": "float",
+        "required": true,
+        "description": "OVL of the two empirical distributions",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "pct_exposed_unsupported",
+        "type": "float",
+        "required": true,
+        "description": "% exposed whose value never occurs / is outside control range",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "pct_control_unsupported",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "exposed_only_levels",
+        "type": "List[str]",
+        "required": false,
+        "description": "categorical underlap",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       },
+       {
+        "name": "control_only_levels",
+        "type": "List[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       },
+       {
+        "name": "levels",
+        "type": "List[LevelShare]",
+        "required": false,
+        "description": "categorical (top 30 levels)",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       },
+       {
+        "name": "histogram",
+        "type": "Optional[Histogram]",
+        "required": false,
+        "description": "numeric",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "exposed_range",
+        "type": "Optional[List[float]]",
+        "required": false,
+        "description": "numeric [min, max]",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "control_range",
+        "type": "Optional[List[float]]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 179,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L179"
+      }
+     },
+     {
+      "name": "LevelShare",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "level",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_exposed",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_control",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "pct_exposed",
+        "type": "float",
+        "required": true,
+        "description": "0-100 within group",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "pct_control",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 171,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L171"
+      }
+     }
+    ]
+   },
+   {
+    "title": "Per-method output",
+    "models": [
+     {
+      "name": "MethodResult",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "method",
+        "type": "Literal['nn_matching', 'ipw', 'overlap_weights', 'stratification', 'aipw']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "label",
+        "type": "str",
+        "required": true,
+        "description": "human readable, e.g. \"1:1 NN matching (caliper 0.2)\"",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "estimand",
+        "type": "Literal['ATT', 'ATE']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_exposed_used",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_control_used",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "balance",
+        "type": "List[BalanceRow]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "balance_summary",
+        "type": "BalanceSummary",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "contrasts",
+        "type": "List[OutcomeContrast]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "subgroups",
+        "type": "List[SubgroupContrast]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       },
+       {
+        "name": "matching",
+        "type": "Optional[MatchingInfo]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "weights",
+        "type": "Optional[WeightSummary]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "adjusted_ps_histogram",
+        "type": "Optional[Histogram]",
+        "required": false,
+        "description": "PS distribution after matching/weighting",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "warnings",
+        "type": "List[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "[]"
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 273,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L273"
+      }
+     },
+     {
+      "name": "BalanceRow",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "variable",
+        "type": "str",
+        "required": true,
+        "description": "encoded variable, e.g. \"age\" or \"region=North\"",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "source_feature",
+        "type": "str",
+        "required": true,
+        "description": "original column",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "role",
+        "type": "Literal['model', 'matching', 'both']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "mean_exposed_before",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "mean_control_before",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "smd_before",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "var_ratio_before",
+        "type": "Optional[float]",
+        "required": false,
+        "description": "numeric (non-dummy) variables only",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "mean_exposed_after",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "mean_control_after",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "smd_after",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "var_ratio_after",
+        "type": "Optional[float]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 208,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L208"
+      }
+     },
+     {
+      "name": "BalanceSummary",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "max_abs_smd_before",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "max_abs_smd_after",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "mean_abs_smd_before",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "mean_abs_smd_after",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_imbalanced_before",
+        "type": "int",
+        "required": true,
+        "description": "|SMD| > 0.1",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_imbalanced_after",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 222,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L222"
+      }
+     },
+     {
+      "name": "OutcomeContrast",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "outcome",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "outcome_type",
+        "type": "Literal['binary', 'continuous']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_exposed",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_control",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "effective_n_control",
+        "type": "float",
+        "required": true,
+        "description": "Kish ESS for weighted methods, matched n otherwise",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "exposed_mean",
+        "type": "float",
+        "required": true,
+        "description": "proportion (0-1) for binary; AIPW: model-based, may fall slightly outside",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "control_mean_raw",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "control_mean_adjusted",
+        "type": "float",
+        "required": true,
+        "description": "counterfactual control mean after adjustment",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "raw_diff",
+        "type": "float",
+        "required": true,
+        "description": "exposed_mean - control_mean_raw",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "lift",
+        "type": "float",
+        "required": true,
+        "description": "absolute lift: exposed_mean(adj) - control_mean_adjusted",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "relative_lift",
+        "type": "Optional[float]",
+        "required": true,
+        "description": "lift / control_mean_adjusted * 100 (None if control mean == 0)",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "se",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "ci_low",
+        "type": "float",
+        "required": true,
+        "description": "CI on absolute lift",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "ci_high",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "p_value",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "significant",
+        "type": "bool",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "ci_method",
+        "type": "Literal['bootstrap', 'analytic']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 231,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L231"
+      }
+     },
+     {
+      "name": "SubgroupContrast",
+      "kind": "model",
+      "doc": "",
+      "bases": [
+       "OutcomeContrast"
+      ],
+      "fields": [
+       {
+        "name": "outcome",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "outcome_type",
+        "type": "Literal['binary', 'continuous']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "n_exposed",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "n_control",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "effective_n_control",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "exposed_mean",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "control_mean_raw",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "control_mean_adjusted",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "raw_diff",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "lift",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "relative_lift",
+        "type": "Optional[float]",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "se",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "ci_low",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "ci_high",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "p_value",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "significant",
+        "type": "bool",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "ci_method",
+        "type": "Literal['bootstrap', 'analytic']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "subgroup_column",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "subgroup_level",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 251,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L251"
+      }
+     },
+     {
+      "name": "MatchingInfo",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "n_exposed_matched",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_exposed_unmatched",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_unique_controls_used",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "caliper_abs",
+        "type": "Optional[float]",
+        "required": true,
+        "description": "caliper on logit scale actually used",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_exact_strata",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 256,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L256"
+      }
+     },
+     {
+      "name": "WeightSummary",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "min",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "max",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "mean",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "n_clipped",
+        "type": "int",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "ess_exposed",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "ess_control",
+        "type": "float",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 264,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L264"
+      }
+     }
+    ]
+   },
+   {
+    "title": "Job envelopes (HTTP API)",
+    "models": [
+     {
+      "name": "JobInfo",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "analysis_id",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "name",
+        "type": "Optional[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "dataset_id",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "status",
+        "type": "Literal['queued', 'running', 'completed', 'failed', 'cancelled']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "progress",
+        "type": "float",
+        "required": false,
+        "description": "0-1, coarse stage progress",
+        "constraints": [],
+        "inherited": false,
+        "default": "0.0"
+       },
+       {
+        "name": "stage",
+        "type": "Optional[str]",
+        "required": false,
+        "description": "e.g. \"fitting model\", \"matching\", \"bootstrapping\"",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "submitted_at",
+        "type": "datetime",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "started_at",
+        "type": "Optional[datetime]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "finished_at",
+        "type": "Optional[datetime]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       },
+       {
+        "name": "error",
+        "type": "Optional[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 315,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L315"
+      }
+     },
+     {
+      "name": "JobDetail",
+      "kind": "model",
+      "doc": "",
+      "bases": [
+       "JobInfo"
+      ],
+      "fields": [
+       {
+        "name": "analysis_id",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "name",
+        "type": "Optional[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": true,
+        "default": "None"
+       },
+       {
+        "name": "dataset_id",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "status",
+        "type": "Literal['queued', 'running', 'completed', 'failed', 'cancelled']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "progress",
+        "type": "float",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": true,
+        "default": "0.0"
+       },
+       {
+        "name": "stage",
+        "type": "Optional[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": true,
+        "default": "None"
+       },
+       {
+        "name": "submitted_at",
+        "type": "datetime",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": true
+       },
+       {
+        "name": "started_at",
+        "type": "Optional[datetime]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": true,
+        "default": "None"
+       },
+       {
+        "name": "finished_at",
+        "type": "Optional[datetime]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": true,
+        "default": "None"
+       },
+       {
+        "name": "error",
+        "type": "Optional[str]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": true,
+        "default": "None"
+       },
+       {
+        "name": "result",
+        "type": "Optional[AnalysisResult]",
+        "required": false,
+        "description": "",
+        "constraints": [],
+        "inherited": false,
+        "default": "None"
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 328,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L328"
+      }
+     },
+     {
+      "name": "AnalysisSubmitted",
+      "kind": "model",
+      "doc": "",
+      "bases": [],
+      "fields": [
+       {
+        "name": "analysis_id",
+        "type": "str",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       },
+       {
+        "name": "status",
+        "type": "Literal['queued', 'running', 'completed', 'failed', 'cancelled']",
+        "required": true,
+        "description": "",
+        "constraints": [],
+        "inherited": false
+       }
+      ],
+      "source": {
+       "path": "packages/propensity_lift/src/propensity_lift/schemas.py",
+       "line": 332,
+       "url": "https://github.com/redam94/propensity-modeling/blob/main/packages/propensity_lift/src/propensity_lift/schemas.py#L332"
+      }
+     }
+    ]
+   }
+  ],
+  "aliases": [
+   {
+    "name": "Scalar",
+    "type": "str | int | float | bool",
+    "values": []
+   },
+   {
+    "name": "ColumnKind",
+    "type": "Literal['numeric', 'binary', 'categorical', 'datetime', 'text', 'empty']",
+    "values": [
+     "numeric",
+     "binary",
+     "categorical",
+     "datetime",
+     "text",
+     "empty"
+    ]
+   },
+   {
+    "name": "ModelType",
+    "type": "Literal['logistic', 'gradient_boosting', 'random_forest']",
+    "values": [
+     "logistic",
+     "gradient_boosting",
+     "random_forest"
+    ]
+   },
+   {
+    "name": "Method",
+    "type": "Literal['nn_matching', 'ipw', 'overlap_weights', 'stratification', 'aipw']",
+    "values": [
+     "nn_matching",
+     "ipw",
+     "overlap_weights",
+     "stratification",
+     "aipw"
+    ]
+   },
+   {
+    "name": "Estimand",
+    "type": "Literal['ATT', 'ATE']",
+    "values": [
+     "ATT",
+     "ATE"
+    ]
+   },
+   {
+    "name": "TrimRule",
+    "type": "Literal['none', 'common_support', 'crump']",
+    "values": [
+     "none",
+     "common_support",
+     "crump"
+    ]
+   },
+   {
+    "name": "OutcomeType",
+    "type": "Literal['binary', 'continuous']",
+    "values": [
+     "binary",
+     "continuous"
+    ]
+   },
+   {
+    "name": "JobStatus",
+    "type": "Literal['queued', 'running', 'completed', 'failed', 'cancelled']",
+    "values": [
+     "queued",
+     "running",
+     "completed",
+     "failed",
+     "cancelled"
+    ]
+   },
+   {
+    "name": "SupportRegion",
+    "type": "Literal['control_only', 'both', 'exposed_only']",
+    "values": [
+     "control_only",
+     "both",
+     "exposed_only"
+    ]
+   }
+  ]
+ },
+ "cli": [
+  {
+   "command": "propensity-lift",
+   "help": "usage: propensity-lift [-h] {profile,run} ...\n\nPropensity score brand lift analysis\n\npositional arguments:\n  {profile,run}\n    profile      profile a data file and print DatasetProfile JSON\n    run          run an analysis from an AnalysisConfig JSON file\n\noptions:\n  -h, --help     show this help message and exit"
+  },
+  {
+   "command": "propensity-lift profile",
+   "help": "usage: propensity-lift profile [-h] [--sheet SHEET] file\n\npositional arguments:\n  file\n\noptions:\n  -h, --help     show this help message and exit\n  --sheet SHEET"
+  },
+  {
+   "command": "propensity-lift run",
+   "help": "usage: propensity-lift run [-h] --config CONFIG [--sheet SHEET] [--out OUT]\n                           [--quiet]\n                           file\n\npositional arguments:\n  file\n\noptions:\n  -h, --help       show this help message and exit\n  --config CONFIG  AnalysisConfig JSON (dataset_id may be any string)\n  --sheet SHEET    overrides config.sheet\n  --out OUT        write AnalysisResult JSON here (default: stdout)\n  --quiet          no progress output"
+  }
+ ],
+ "http": [
+  {
+   "method": "GET",
+   "path": "/api/health",
+   "summary": "Health",
+   "description": "",
+   "params": [],
+   "body": "",
+   "responses": [
+    {
+     "status": "200",
+     "description": "Successful Response",
+     "schema": "object"
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/api/datasets",
+   "summary": "Upload Dataset",
+   "description": "",
+   "params": [
+    {
+     "name": "sheet",
+     "in": "query",
+     "required": false,
+     "type": "string | null"
+    }
+   ],
+   "body": "multipart file upload",
+   "responses": [
+    {
+     "status": "201",
+     "description": "Successful Response",
+     "schema": "DatasetProfile"
+    },
+    {
+     "status": "422",
+     "description": "Validation Error",
+     "schema": "HTTPValidationError"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/api/datasets",
+   "summary": "List Datasets",
+   "description": "",
+   "params": [],
+   "body": "",
+   "responses": [
+    {
+     "status": "200",
+     "description": "Successful Response",
+     "schema": "DatasetProfile[]"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/api/datasets/{dataset_id}",
+   "summary": "Get Dataset",
+   "description": "",
+   "params": [
+    {
+     "name": "dataset_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "sheet",
+     "in": "query",
+     "required": false,
+     "type": "string | null"
+    }
+   ],
+   "body": "",
+   "responses": [
+    {
+     "status": "200",
+     "description": "Successful Response",
+     "schema": "DatasetProfile"
+    },
+    {
+     "status": "422",
+     "description": "Validation Error",
+     "schema": "HTTPValidationError"
+    }
+   ]
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/datasets/{dataset_id}",
+   "summary": "Delete Dataset",
+   "description": "",
+   "params": [
+    {
+     "name": "dataset_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "body": "",
+   "responses": [
+    {
+     "status": "204",
+     "description": "Successful Response",
+     "schema": ""
+    },
+    {
+     "status": "422",
+     "description": "Validation Error",
+     "schema": "HTTPValidationError"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/api/analyses",
+   "summary": "List Analyses",
+   "description": "",
+   "params": [],
+   "body": "",
+   "responses": [
+    {
+     "status": "200",
+     "description": "Successful Response",
+     "schema": "JobInfo[]"
+    }
+   ]
+  },
+  {
+   "method": "POST",
+   "path": "/api/analyses",
+   "summary": "Submit Analysis",
+   "description": "",
+   "params": [],
+   "body": "AnalysisConfig",
+   "responses": [
+    {
+     "status": "202",
+     "description": "Successful Response",
+     "schema": "AnalysisSubmitted"
+    },
+    {
+     "status": "422",
+     "description": "Validation Error",
+     "schema": "HTTPValidationError"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/api/analyses/{analysis_id}",
+   "summary": "Get Analysis",
+   "description": "",
+   "params": [
+    {
+     "name": "analysis_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "body": "",
+   "responses": [
+    {
+     "status": "200",
+     "description": "Successful Response",
+     "schema": "JobDetail"
+    },
+    {
+     "status": "422",
+     "description": "Validation Error",
+     "schema": "HTTPValidationError"
+    }
+   ]
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/analyses/{analysis_id}",
+   "summary": "Delete Analysis",
+   "description": "",
+   "params": [
+    {
+     "name": "analysis_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "body": "",
+   "responses": [
+    {
+     "status": "204",
+     "description": "Successful Response",
+     "schema": ""
+    },
+    {
+     "status": "422",
+     "description": "Validation Error",
+     "schema": "HTTPValidationError"
+    }
+   ]
+  },
+  {
+   "method": "GET",
+   "path": "/api/analyses/{analysis_id}/export",
+   "summary": "Export Analysis",
+   "description": "",
+   "params": [
+    {
+     "name": "analysis_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "body": "",
+   "responses": [
+    {
+     "status": "200",
+     "description": "Successful Response",
+     "schema": ""
+    },
+    {
+     "status": "422",
+     "description": "Validation Error",
+     "schema": "HTTPValidationError"
+    }
+   ]
+  }
+ ]
+}

@@ -3,8 +3,9 @@
 
 PORT ?= 8000
 HOST ?= 127.0.0.1
+SITE_PORT ?= 4173
 
-.PHONY: help install dev-backend dev-frontend test test-python test-frontend build serve sample lint clean
+.PHONY: help install dev-backend dev-frontend test test-python test-frontend build serve sample lint clean site site-data site-check
 
 help:
 	@echo "make install       uv sync + npm install"
@@ -14,6 +15,9 @@ help:
 	@echo "make build         production frontend build (frontend/dist)"
 	@echo "make serve         single-process prod: build, then uvicorn serves API + UI on :$(PORT)"
 	@echo "make sample        regenerate sample_data/brand_lift_sample.xlsx"
+	@echo "make site          preview the documentation site on :$(SITE_PORT)"
+	@echo "make site-data     regenerate the site's API reference and walkthrough data"
+	@echo "make site-check    fail if the committed API reference is out of date"
 
 install:
 	uv sync
@@ -41,6 +45,15 @@ serve: build
 
 sample:
 	uv run python scripts/make_sample_excel.py
+
+site:
+	uv run python -m http.server $(SITE_PORT) --bind $(HOST) --directory site
+
+site-data:
+	uv run python scripts/build_site_data.py
+
+site-check:
+	uv run python scripts/build_site_data.py --check
 
 lint:
 	uv run ruff check packages backend
