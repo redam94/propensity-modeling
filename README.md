@@ -5,6 +5,9 @@ fits a propensity-score model and adjusts the control group with matching or wei
 brand KPI, how exposed respondents compare with comparable controls. It also shows where the two groups overlap
 or fail to overlap (**over/underlap**), both on the propensity score and feature by feature.
 
+**Documentation site:** <https://redam94.github.io/propensity-modeling/> covers how to frame the question, what
+identification requires, the methods, an end-to-end walkthrough, common use cases and the full API reference.
+
 The repository has three parts:
 
 | Part | Path | What it is |
@@ -266,6 +269,24 @@ curl localhost:8000/api/analyses/<analysis_id>                                  
 curl -OJ localhost:8000/api/analyses/<analysis_id>/export                                # Excel
 ```
 
+## Documentation site
+
+The site in `site/` is static HTML, CSS and JavaScript with no build step. `.github/workflows/pages.yml` publishes it
+to GitHub Pages on every push to `main` that touches the site, the generator or the package source.
+
+```bash
+make site          # preview at http://127.0.0.1:4173
+make site-data     # regenerate site/assets/data/api.json and walkthrough.json
+make site-check    # exit 1 if api.json is stale or a Python example on the site no longer runs
+```
+
+`scripts/build_site_data.py` writes the two data files the site reads. `api.json` is the API reference, introspected
+from the package, the CLI help and the FastAPI routes; the deploy workflow regenerates it, so the published reference
+always matches `main`. `walkthrough.json` is a real `run_analysis` result on the sample data and is committed; rerun
+`make site-data` after changing anything that affects results.
+
+One-time setup: in the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**.
+
 ## Repository layout
 
 ```
@@ -275,5 +296,7 @@ frontend/                   React app (src/pages, src/components, src/api), vite
 scripts/make_sample_excel.py
 sample_data/brand_lift_sample.xlsx
 docs/ARCHITECTURE.md
+site/                       documentation site (GitHub Pages)
+scripts/build_site_data.py  generates the site's API reference and walkthrough data
 Makefile
 ```

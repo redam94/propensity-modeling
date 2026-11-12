@@ -33,6 +33,8 @@ frontend/                         Vite + React 18 + TypeScript, @tanstack/react-
   src/api/types.ts  mirrors schemas.py 1:1 (snake_case)
   src/api/client.ts fetch wrappers
 scripts/make_sample_excel.py      writes sample_data/brand_lift_sample.xlsx
+scripts/build_site_data.py        writes site/assets/data/{api,walkthrough}.json for the documentation site
+site/                             static documentation site, published to GitHub Pages by .github/workflows/pages.yml
 ```
 
 ## Statistical choices (defaults)

@@ -1,0 +1,52 @@
+# Publishes the static documentation site in site/ to GitHub Pages.
+#
+# One-time setup: in the repository settings, set Pages > Build and deployment > Source to "GitHub Actions".
+# The API reference (site/assets/data/api.json) is regenerated from the package source on every deploy,
+# so the published reference always matches main. The walkthrough data is committed and published as is.
+name: Deploy documentation site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "scripts/build_site_data.py"
+      - "packages/propensity_lift/src/**"
+      - "backend/app/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deployment finish; queue at most one behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Install the workspace
+        run: uv sync --frozen
+      - name: Regenerate the API reference from source
+        run: uv run python scripts/build_site_data.py --api-only
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
