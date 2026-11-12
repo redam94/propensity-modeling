@@ -85,14 +85,17 @@
     </div>
     <div class="tiles">
       <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/assignment.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Argue it from the assignment.</h3>
         <p>Write down how respondents came to be exposed and check that each driver is in the model. This is a subject-matter argument. A statistic cannot make it for you.</p>
       </div>
       <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/placebo.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Run a placebo outcome.</h3>
         <p>Add a KPI the campaign could not have moved, such as awareness of an unrelated brand. <strong>Adjusted lift on a placebo should be near zero.</strong> If it is not, something is still unbalanced.</p>
       </div>
       <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/sensitivity.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Ask how strong a hidden cause would need to be.</h3>
         <p>Sensitivity analysis turns “there might be confounding” into a size. The package does not compute it; the reading list below covers E-values and Rosenbaum bounds.</p>
       </div>
@@ -140,14 +143,17 @@
     </div>
     <div class="tiles">
       <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/report.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>What the package reports.</h3>
         <p>The common-support interval, counts of respondents in the <code>control_only</code>, <code>both</code> and <code>exposed_only</code> regions, and the overlap coefficient. Roughly: above 0.8 is good, 0.5 to 0.8 is workable, below 0.5 is poor.</p>
       </div>
       <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/warning.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>What it warns about.</h3>
         <p>An AUC above 0.9, more than 5% of exposed respondents scoring above every control, and exposed respondents left unmatched by the caliper. Warnings are in <code>result.warnings</code> and on each method.</p>
       </div>
       <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/remedies.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>What you can do.</h3>
         <p>Trim to common support, use overlap weights, or tighten the caliper. Each one <strong>changes who the answer is about</strong>: dropping exposed respondents means the estimate no longer covers everyone the campaign reached.</p>
       </div>
@@ -176,18 +182,22 @@ for f in result.feature_overlap:
     </div>
     <div class="tiles">
       <div class="tile" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/source.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Where the flag came from.</h3>
         <p>Ad-server logs and panel matching record exposure. <strong>“Do you remember seeing this ad?” records an outcome.</strong> People who liked the ad remember it, so a recall-based flag sorts respondents by their reaction to the campaign and then credits the campaign for the difference.</p>
       </div>
       <div class="tile" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/contamination.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Controls who saw it anyway.</h3>
         <p>A control exposed on another device, channel or household screen is counted as unexposed. The two groups become more alike than their labels say, and the measured lift shrinks towards zero.</p>
       </div>
       <div class="tile" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/dose.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>One flag, many doses.</h3>
         <p>One impression and twenty are both “exposed”. The estimate is an average over whatever frequency mix your sample has, and it will not transfer to a campaign with a different mix. If frequency matters, define exposure by it and say what happens to everyone in between.</p>
       </div>
       <div class="tile" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/spillover.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Effects that travel.</h3>
         <p>Shared households, word of mouth and social sharing let exposure reach people coded as controls. A respondent-level comparison then measures only the part of the effect that stayed with the person who saw the ad.</p>
       </div>
@@ -218,20 +228,23 @@ for f in result.feature_overlap:
   </div>
 </section>
 
-<section class="band band--dark" id="limits">
+<section class="band band--dark band--contours" id="limits">
   <div class="wrap">
     <h2 class="headline" data-reveal>Sometimes the honest answer is that this data cannot say.</h2>
     <p class="lead" data-reveal>Propensity methods work when exposure was driven by things you measured. Online ad delivery often is not: people who are active online on a given day both see more ads and do more of everything else. In a randomised study of this pattern, <strong>the control group showed the same spike in activity on campaign day as the exposed group.</strong></p>
     <div class="tiles">
       <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/hidden.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Exposure followed behaviour you cannot see.</h3>
         <p>Retargeting, look-alike audiences and bid optimisation select on signals that predict the outcome and are not in your survey.</p>
       </div>
       <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/no-counterpart.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Most of the exposed have no counterpart.</h3>
         <p>An overlap coefficient under 0.5, or a large <code>exposed_only</code> region, means the comparison exists for a small and unusual subset.</p>
       </div>
       <div class="tile tile--third" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/feedback.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>The flag depends on the respondent's reaction.</h3>
         <p>Recall-based or completion-based exposure cannot be repaired by adjustment. It needs a different exposure measure or a randomised holdout.</p>
       </div>

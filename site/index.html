@@ -75,16 +75,19 @@
     </div>
     <div class="tiles">
       <a class="tile tile--third" href="identification.html#unconfoundedness" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/unmeasured.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>You measured why people were exposed.</h3>
         <p>Every cause of exposure that also moves the outcome is in the model. This is <strong>unconfoundedness</strong>, and it cannot be tested.</p>
         <span class="more">No unmeasured confounding</span>
       </a>
       <a class="tile tile--third" href="identification.html#overlap" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/overlap.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Comparable people exist.</h3>
         <p>For every kind of exposed respondent there are controls like them. This is <strong>overlap</strong>, and the package can show you where it fails.</p>
         <span class="more">Overlap and positivity</span>
       </a>
       <a class="tile tile--third" href="identification.html#consistency" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/consistency.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>“Exposed” means one thing.</h3>
         <p>One well-defined exposure, with no spillover from one respondent to another. This is <strong>consistency</strong>, and it is decided when you code the flag.</p>
         <span class="more">A well-defined exposure</span>
@@ -93,7 +96,7 @@
   </div>
 </section>
 
-<section class="band band--dark" id="evidence">
+<section class="band band--dark band--particles" id="evidence">
   <div class="wrap">
     <h2 class="headline" data-reveal>When observational ad measurement was checked against experiments, it missed badly.</h2>
     <p class="lead" data-reveal>These studies had far richer data than a survey and still went wrong, because the variables that drove exposure were not in the data. <strong>The estimator was rarely the weak point.</strong></p>
@@ -140,21 +143,25 @@ result = run_analysis(df, cfg)</code></pre>
     </figure>
     <div class="tiles">
       <a class="tile tile--7" href="methods.html" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/estimators.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Five estimators, side by side.</h3>
         <p>Nearest-neighbour matching, inverse probability weighting, overlap weights, stratification and doubly robust AIPW run from one config. <strong>When they disagree, that is information.</strong></p>
         <span class="more">How each method works</span>
       </a>
       <a class="tile tile--5" href="identification.html#overlap" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/overlap.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Overlap you can see.</h3>
         <p>Common support, the overlap coefficient and feature-by-feature gaps, reported before any lift number.</p>
         <span class="more">Reading overlap</span>
       </a>
       <a class="tile tile--5" href="methods.html#balance" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/balance.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Balance, before and after.</h3>
         <p>Standardised mean differences for every covariate, with the same denominator on both sides so the two are comparable.</p>
         <span class="more">Balance diagnostics</span>
       </a>
       <a class="tile tile--7" href="methods.html#uncertainty" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/interval.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>Intervals that include the adjustment.</h3>
         <p>The bootstrap redoes the matching or weighting on every resample, so the interval reflects the adjustment step and not only the final difference in means.</p>
         <span class="more">Uncertainty</span>
@@ -170,16 +177,19 @@ result = run_analysis(df, cfg)</code></pre>
     </div>
     <div class="tiles">
       <a class="tile tile--third" href="framing.html" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/compass.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>I build models, and causal questions are new to me.</h3>
         <p>Start with the question: what you are estimating, for whom, and which variables may go in the model.</p>
         <span class="more">Frame the question</span>
       </a>
       <a class="tile tile--third" href="walkthrough.html" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/run.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>I want to run it on data now.</h3>
         <p>An end-to-end run on the bundled sample survey, with every output explained as it appears.</p>
         <span class="more">Walkthrough</span>
       </a>
       <a class="tile tile--third" href="api.html" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/reference.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <h3>I need a field name.</h3>
         <p>Every function, config option and result field, generated from the source.</p>
         <span class="more">API reference</span>

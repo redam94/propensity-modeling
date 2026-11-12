@@ -38,6 +38,10 @@
   --radius-m: 18px;
   --radius-s: 10px;
   --ease: cubic-bezier(0.28, 0.11, 0.32, 1);
+  /* Generated icons are drawn on black. Light surfaces invert them and multiply. */
+  --icon-filter: invert(1) hue-rotate(180deg) saturate(1.4);
+  --icon-blend: multiply;
+  --card-glow: 0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -66,6 +70,9 @@
     --tok-num: #d9c97c;
     --tok-com: #86868b;
     --tok-fn: #6bdfff;
+    --icon-filter: none;
+    --icon-blend: screen;
+    --card-glow: 0.12;
   }
 }
 
@@ -95,6 +102,33 @@
   --tok-num: #d9c97c;
   --tok-com: #86868b;
   --tok-fn: #6bdfff;
+  --icon-filter: none;
+  --icon-blend: screen;
+  --card-glow: 0.12;
+}
+
+/* Generated dark textures behind two showcase bands. The left-hand scrim keeps text legible. */
+.band.band--particles,
+.band.band--contours {
+  background:
+    linear-gradient(90deg, var(--bg) 30%, color-mix(in srgb, var(--bg) 70%, transparent) 62%, color-mix(in srgb, var(--bg) 40%, transparent)),
+    var(--band-art) right center / cover no-repeat,
+    var(--bg);
+}
+.band--particles {
+  --band-art: url("../img/bg-particles.webp");
+}
+.band--contours {
+  --band-art: url("../img/bg-contours.webp");
+}
+@media (max-width: 860px) {
+  .band.band--particles,
+  .band.band--contours {
+    background:
+      linear-gradient(180deg, var(--bg) 35%, color-mix(in srgb, var(--bg) 55%, transparent)),
+      var(--band-art) right bottom / auto 60% no-repeat,
+      var(--bg);
+  }
 }
 
 *,
@@ -762,6 +796,32 @@ pre {
 }
 .tile-figure {
   margin: 26px 0 0;
+}
+.tile-icon {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: -6px 0 20px -6px;
+  filter: var(--icon-filter);
+  mix-blend-mode: var(--icon-blend);
+}
+/* Soft generated glow in the top-right corner of cards on dark surfaces only. */
+.tile {
+  isolation: isolate;
+}
+.tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url("../img/bg-card.webp") right top / cover no-repeat;
+  opacity: var(--card-glow);
+  mix-blend-mode: screen;
+  transition: opacity 0.5s var(--ease);
+  pointer-events: none;
+}
+a.tile:hover::before {
+  opacity: calc(var(--card-glow) * 1.8);
 }
 a.tile {
   transition: transform 0.5s var(--ease);

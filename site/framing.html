@@ -178,21 +178,25 @@
     </div>
     <div class="tiles">
       <div class="tile" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/confounder.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <span class="rule-mark is-yes">Include</span>
         <h3>Causes of both exposure and the outcome.</h3>
         <p>Age, media habits, prior relationship with the brand, category involvement. These are the confounders, and the analysis exists to balance them. <strong>Be generous here:</strong> leaving one out biases the estimate, while including a weak one costs little.</p>
       </div>
       <div class="tile" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/outcome-only.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <span class="rule-mark is-yes">Include if you have it</span>
         <h3>Causes of the outcome only.</h3>
         <p>They do not predict exposure, so they barely change the scores. They still tighten the estimate, because they soak up outcome variation that would otherwise be noise.</p>
       </div>
       <div class="tile" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/exposure-only.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <span class="rule-mark is-maybe">Leave out</span>
         <h3>Causes of exposure only.</h3>
         <p>Targeting flags, ad-server quirks, which panel a respondent came from. They raise the AUC, thin out the overlap and widen the interval. <strong>If a confounder is still missing, they make its bias larger.</strong></p>
       </div>
       <div class="tile" data-reveal>
+        <img class="tile-icon" src="assets/img/icons/post-treatment.webp" alt="" width="56" height="56" loading="lazy" decoding="async">
         <span class="rule-mark is-no">Never</span>
         <h3>Anything the exposure could have changed.</h3>
         <p>Ad recall, site visits, post-campaign attitudes, anything measured after the first impression that the ad might have moved. Adjusting for it removes real effect or manufactures a false one.</p>
