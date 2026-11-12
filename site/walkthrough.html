@@ -143,7 +143,7 @@ cfg = AnalysisConfig(
     n_bootstrap=200,
 )</code></pre></figure>
         <div class="prose">
-          <p><code>propensity_lift.sample_data.sample_analysis_config()</code> returns this config ready-made. Options left at their defaults: a 0.2 caliper, 1:1 matching with replacement, no trimming, no weight clipping, <code>alpha=0.05</code>. <a href="api.html#AnalysisConfig">Every option</a></p>
+          <p><code>propensity_lift.sample_data.sample_analysis_config()</code> builds the same config with four methods. It leaves out <code>aipw</code>, so pass <code>methods=[...]</code> to it to get all five. Options left at their defaults: a 0.2 caliper, 1:1 matching with replacement, no trimming, no weight clipping, <code>alpha=0.05</code>. <a href="api.html#AnalysisConfig">Every option</a></p>
         </div>
       </section>
 
@@ -266,7 +266,7 @@ for m in result.methods:
           <ul>
             <li><strong>Adjustment shrinks every KPI.</strong> Consideration goes from a raw <span data-w="result.methods[ipw].contrasts[consideration].raw_diff" data-fmt="pp">+14.0 pp</span> to <span data-w="result.methods[ipw].contrasts[consideration].lift" data-fmt="pp">+8.0 pp</span> under IPW. The gap between them is the part of the raw difference that the measured covariates explain.</li>
             <li><strong>The weighting methods agree.</strong> IPW, overlap weights, stratification and AIPW land within about a point of each other on most KPIs. That says the result does not depend on how the score is used. It says nothing about whether the covariates are sufficient.</li>
-            <li><strong>The placebo behaves.</strong> Unaided awareness shows a raw <span data-w="result.methods[ipw].contrasts[unaided_awareness].raw_diff" data-fmt="pp">+3.6 pp</span> that is pure confounding. After adjustment the weighting methods put it at <span data-w="result.methods[ipw].contrasts[unaided_awareness].lift" data-fmt="pp">−3.1 pp</span> with intervals that include zero.</li>
+            <li><strong>The placebo behaves.</strong> Unaided awareness shows a raw <span data-w="result.methods[ipw].contrasts[unaided_awareness].raw_diff" data-fmt="pp">+3.6 pp</span> that is pure confounding. After adjustment IPW puts it at <span data-w="result.methods[ipw].contrasts[unaided_awareness].lift" data-fmt="pp">−3.1 pp</span>, the other weighting methods land between <span data-w="result.methods[overlap_weights].contrasts[unaided_awareness].lift" data-fmt="pp">−2.6 pp</span> and <span data-w="result.methods[aipw].contrasts[unaided_awareness].lift" data-fmt="pp">−3.4 pp</span>, and all four intervals include zero.</li>
             <li><strong>One false positive.</strong> Matching reports the same placebo as significant, p = <span data-w="result.methods[nn_matching].contrasts[unaided_awareness].p_value" data-fmt="p">0.046</span>. With six KPIs and five methods, one result at that level is expected by chance. It is also the method that dropped <span data-w="result.methods[nn_matching].matching.n_exposed_unmatched" data-fmt="int">123</span> exposed respondents.</li>
           </ul>
         </div>

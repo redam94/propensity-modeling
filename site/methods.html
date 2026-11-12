@@ -313,11 +313,11 @@
   <div class="wrap wrap--narrow">
     <h2 class="headline headline--s" data-reveal>Uncertainty</h2>
     <div class="prose" data-reveal>
-      <p>With <code>n_bootstrap</code> above zero (the default is 200), respondents are resampled within each group and the adjustment is redone on every resample: the trim rule is reapplied, and the matching or weights are rebuilt. The interval is the lift plus or minus a normal quantile times the bootstrap standard error, and the p-value uses the same standard error, so the interval, the p-value and the <code>significant</code> flag always agree.</p>
+      <p>With <code>n_bootstrap</code> above zero (the default is 200), respondents are resampled within each group and the matching or weights are rebuilt on every resample. The interval is the lift plus or minus a normal quantile times the bootstrap standard error, and the p-value uses the same standard error, so the interval, the p-value and the <code>significant</code> flag always agree.</p>
       <ul>
-        <li>For weighting methods with a <strong>logistic</strong> model, the propensity model is refitted in every replicate, so the interval includes the uncertainty in the scores.</li>
-        <li>For <strong>gradient boosting and random forest</strong>, refitting is too slow, so the scores are held fixed and the run adds a warning.</li>
-        <li>For <strong>matching</strong>, the plain bootstrap is an approximation. Treat borderline results from matching with extra caution.</li>
+        <li>For weighting methods with a <strong>logistic</strong> model, each replicate resamples the full sample, refits the propensity model and reapplies the trim rule. The interval then includes the uncertainty in the scores.</li>
+        <li>For <strong>gradient boosting and random forest</strong>, refitting is too slow. Replicates resample the already-trimmed sample with the scores held fixed, and the run adds a warning that this tends to overstate the standard errors.</li>
+        <li>For <strong>matching</strong>, the scores are held fixed and the matching is redone in each replicate. The plain bootstrap is an approximation here, so treat borderline results from matching with extra caution.</li>
         <li>For <strong>AIPW</strong>, the outcome models are refitted in every replicate.</li>
         <li>With <code>n_bootstrap=0</code>, analytic standard errors are used and a warning notes that they ignore the estimation of the scores.</li>
       </ul>

@@ -91,7 +91,7 @@ sections.push(`<section id="overview" data-title="Package overview">
     <tr><td><a href="#AnalysisConfig"><code>AnalysisConfig</code></a></td><td>Every option for a run.</td></tr>
     <tr><td><a href="#AnalysisResult"><code>AnalysisResult</code></a></td><td>Everything a run returns.</td></tr>
   </tbody></table></div>
-  <p class="api-meta">All ${api.exports.length} names exported from the package root: ${api.exports.map((n) => {
+  <p class="api-meta">The package root exports <code>__version__</code> and these ${api.exports.length} names: ${api.exports.map((n) => {
     const target = KNOWN.has(n) ? n : (api.modules.flatMap((m) => m.members.filter((x) => x.name === n).map(() => `${m.name}-${n}`))[0] || "");
     return target ? `<a href="#${target}"><code>${esc(n)}</code></a>` : `<code>${esc(n)}</code>`;
   }).join(", ")}.</p>
